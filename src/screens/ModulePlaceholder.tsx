@@ -3,12 +3,22 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 type ModulePlaceholderProps = {
   title: string;
   subtitle: string;
+  welcome?: string;
+  moduleSubtitle?: string;
   accent: string;
   icon: string;
   onBack: () => void;
 };
 
-export function ModulePlaceholder({ title, subtitle, accent, icon, onBack }: ModulePlaceholderProps) {
+export function ModulePlaceholder({
+  title,
+  subtitle,
+  welcome,
+  moduleSubtitle,
+  accent,
+  icon,
+  onBack,
+}: ModulePlaceholderProps) {
   return (
     <View style={styles.screen}>
       <TouchableOpacity activeOpacity={0.8} onPress={onBack} style={styles.backButton}>
@@ -21,6 +31,13 @@ export function ModulePlaceholder({ title, subtitle, accent, icon, onBack }: Mod
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
+
+      {welcome && moduleSubtitle ? (
+        <View style={[styles.welcomeCard, { borderLeftColor: accent }]}>
+          <Text style={styles.welcomeTitle}>{welcome}</Text>
+          <Text style={styles.welcomeSubtitle}>{moduleSubtitle}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Modulo en preparacion</Text>
@@ -94,6 +111,30 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.1,
     shadowRadius: 22,
+  },
+  welcomeCard: {
+    backgroundColor: '#ffffff',
+    borderLeftWidth: 5,
+    borderRadius: 24,
+    marginTop: 24,
+    padding: 18,
+    shadowColor: '#756a91',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+  },
+  welcomeTitle: {
+    color: '#202334',
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 0,
+  },
+  welcomeSubtitle: {
+    color: '#737988',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 20,
+    marginTop: 6,
   },
   cardTitle: {
     color: '#202334',

@@ -8,6 +8,7 @@ import { ImprentaScreen } from './src/screens/ImprentaScreen';
 import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
 import type { AppScreen, AreaId, MainTabId } from './src/types/navigation';
+import { healthColors } from './src/constants/healthTheme';
 
 export default function App() {
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home');
@@ -28,9 +29,9 @@ export default function App() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, activeScreen === 'kinesiologia' ? styles.healthSafeArea : null]}>
       <StatusBar style="dark" />
-      <View style={styles.appShell}>
+      <View style={[styles.appShell, activeScreen === 'kinesiologia' ? styles.healthShell : null]}>
         {activeScreen === 'home' ? <HomeScreen onOpenArea={openArea} /> : null}
         {activeScreen === 'electricidad' ? <ElectricidadScreen onBack={backHome} /> : null}
         {activeScreen === 'kinesiologia' ? <KinesiologiaScreen onBack={backHome} /> : null}
@@ -54,7 +55,9 @@ export default function App() {
           />
         ) : null}
 
-        <BottomNav activeTab={activeTab} onChangeTab={openTab} />
+        {['home', 'clients', 'reports', 'settings'].includes(activeScreen) ? (
+          <BottomNav activeTab={activeTab} onChangeTab={openTab} />
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -65,8 +68,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#efe0ff',
     flex: 1,
   },
+  healthSafeArea: {
+    backgroundColor: healthColors.night,
+  },
   appShell: {
     backgroundColor: '#f7efff',
     flex: 1,
+  },
+  healthShell: {
+    backgroundColor: healthColors.cream,
   },
 });

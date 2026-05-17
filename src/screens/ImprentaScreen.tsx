@@ -9,6 +9,8 @@ export function ImprentaScreen({ onBack }: ImprentaScreenProps) {
     <ModulePlaceholder
       title="Servicio de Imprenta"
       subtitle="Disenos, impresiones, pedidos, costos y entregas."
+      welcome="Bienvenidos Fer y Lucas"
+      moduleSubtitle="Gestión de servicios de imprenta"
       accent="#8f5cf7"
       icon="CMYK"
       onBack={onBack}

@@ -20,9 +20,9 @@ export const appAreas: AreaConfig[] = [
     description: 'Pacientes, sesiones, turnos y tratamientos.',
     icon: '+',
     eyebrow: 'Salud',
-    accent: '#36b7a0',
-    accentSoft: '#ddf8f3',
-    textColor: '#10231f',
+    accent: '#040833',
+    accentSoft: '#fcf4e4',
+    textColor: '#040833',
     stats: '8 turnos',
   },
   {

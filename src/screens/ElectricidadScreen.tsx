@@ -9,8 +9,10 @@ export function ElectricidadScreen({ onBack }: ElectricidadScreenProps) {
     <ModulePlaceholder
       title="Servicio de Electricidad"
       subtitle="Presupuestos, materiales, instalaciones y trabajos electricos."
+      welcome="Bienvenido Lucas"
+      moduleSubtitle="Gestión de servicios eléctricos"
       accent="#f5a524"
-      icon="⚡"
+      icon="E"
       onBack={onBack}
     />
   );
