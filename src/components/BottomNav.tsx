@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { homeColors, homeRadii } from '../constants/homeTheme';
 import type { MainTabId } from '../types/navigation';
 
 type BottomNavProps = {
@@ -7,10 +8,10 @@ type BottomNavProps = {
 };
 
 const tabs: Array<{ id: MainTabId; label: string; icon: string }> = [
-  { id: 'home', label: 'Inicio', icon: '⌂' },
-  { id: 'clients', label: 'Clientes', icon: '◎' },
-  { id: 'reports', label: 'Reportes', icon: '▥' },
-  { id: 'settings', label: 'Ajustes', icon: '⚙' },
+  { id: 'home', label: 'Inicio', icon: 'IN' },
+  { id: 'clients', label: 'Clientes', icon: 'CL' },
+  { id: 'reports', label: 'Reportes', icon: 'RP' },
+  { id: 'settings', label: 'Ajustes', icon: 'AJ' },
 ];
 
 export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
@@ -26,8 +27,8 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
             onPress={() => onChangeTab(tab.id)}
             style={[styles.item, isActive ? styles.activeItem : null]}
           >
-            <Text style={[styles.icon, isActive ? styles.activeText : null]}>{tab.icon}</Text>
-            <Text style={[styles.label, isActive ? styles.activeText : null]}>{tab.label}</Text>
+            <Text style={[styles.icon, isActive ? styles.activeIcon : null]}>{tab.icon}</Text>
+            <Text style={[styles.label, isActive ? styles.activeLabel : null]}>{tab.label}</Text>
           </TouchableOpacity>
         );
       })}
@@ -38,44 +39,49 @@ export function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
 const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.96)',
+    borderColor: homeColors.border,
+    borderRadius: homeRadii.card,
+    borderWidth: 1,
     bottom: 16,
     flexDirection: 'row',
-    gap: 4,
+    gap: 6,
     justifyContent: 'space-between',
     left: 18,
     padding: 8,
     position: 'absolute',
     right: 18,
-    shadowColor: '#55486f',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
+    shadowColor: homeColors.shadow,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.16,
+    shadowRadius: 28,
     elevation: 8,
   },
   item: {
     alignItems: 'center',
-    borderRadius: 22,
+    borderRadius: homeRadii.control,
     flex: 1,
-    minHeight: 54,
     justifyContent: 'center',
+    minHeight: 56,
   },
   activeItem: {
-    backgroundColor: '#1e2232',
+    backgroundColor: homeColors.primary,
   },
   icon: {
-    color: '#8a90a0',
-    fontSize: 17,
+    color: homeColors.softText,
+    fontSize: 11,
     fontWeight: '900',
   },
   label: {
-    color: '#8a90a0',
+    color: homeColors.muted,
     fontSize: 11,
     fontWeight: '800',
-    marginTop: 2,
+    marginTop: 3,
   },
-  activeText: {
+  activeIcon: {
+    color: '#ffffff',
+  },
+  activeLabel: {
     color: '#ffffff',
   },
 });

@@ -8,6 +8,7 @@ import { ImprentaScreen } from './src/screens/ImprentaScreen';
 import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
 import type { AppScreen, AreaId, MainTabId } from './src/types/navigation';
+import { homeColors } from './src/constants/homeTheme';
 import { healthColors } from './src/constants/healthTheme';
 
 export default function App() {
@@ -65,14 +66,14 @@ export default function App() {
 
 const styles = StyleSheet.create({
   safeArea: {
-    backgroundColor: '#efe0ff',
+    backgroundColor: homeColors.primary,
     flex: 1,
   },
   healthSafeArea: {
     backgroundColor: healthColors.night,
   },
   appShell: {
-    backgroundColor: '#f7efff',
+    backgroundColor: homeColors.background,
     flex: 1,
   },
   healthShell: {

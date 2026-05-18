@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { homeColors, homeRadii } from '../constants/homeTheme';
 import type { AreaConfig } from '../types/navigation';
 
 type AreaCardProps = {
@@ -8,28 +9,30 @@ type AreaCardProps = {
 
 export function AreaCard({ area, onPress }: AreaCardProps) {
   return (
-    <TouchableOpacity
-      activeOpacity={0.86}
-      onPress={onPress}
-      style={[styles.card, { backgroundColor: area.accentSoft }]}
-    >
+    <TouchableOpacity activeOpacity={0.88} onPress={onPress} style={[styles.card, { backgroundColor: area.surface }]}>
+      <View style={[styles.glow, { backgroundColor: area.accentSoft }]} />
+
       <View style={styles.topRow}>
-        <View style={[styles.iconBubble, { backgroundColor: area.accent }]}>
+        <View style={[styles.iconShell, { backgroundColor: area.accent }]}>
           <Text style={styles.icon}>{area.icon}</Text>
         </View>
-        <View style={styles.metaBlock}>
-          <Text style={[styles.eyebrow, { color: area.accent }]}>{area.eyebrow}</Text>
-          <Text style={styles.stats}>{area.stats}</Text>
+        <View style={styles.codeBlock}>
+          <Text style={styles.shortCode}>{area.shortCode}</Text>
+          <Text style={[styles.stats, { color: area.accent }]}>{area.stats}</Text>
         </View>
       </View>
 
+      <Text style={styles.eyebrow}>{area.eyebrow}</Text>
       <Text style={[styles.title, { color: area.textColor }]}>{area.title}</Text>
       <Text style={styles.description}>{area.description}</Text>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>Ingresar</Text>
-        <View style={[styles.arrowCircle, { backgroundColor: area.accent }]}>
-          <Text style={styles.arrow}>›</Text>
+        <View>
+          <Text style={styles.familyNote}>{area.familyNote}</Text>
+          <Text style={styles.footerText}>{area.operationalHint}</Text>
+        </View>
+        <View style={[styles.enterButton, { backgroundColor: area.accent }]}>
+          <Text style={styles.enterText}>Entrar</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -38,81 +41,106 @@ export function AreaCard({ area, onPress }: AreaCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 28,
+    borderColor: homeColors.border,
+    borderRadius: homeRadii.card,
+    borderWidth: 1,
+    minHeight: 214,
+    overflow: 'hidden',
     padding: 20,
-    minHeight: 184,
-    shadowColor: '#6b5b8f',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    elevation: 6,
+    shadowColor: homeColors.shadow,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.12,
+    shadowRadius: 26,
+    elevation: 5,
+  },
+  glow: {
+    borderRadius: 80,
+    height: 138,
+    opacity: 0.82,
+    position: 'absolute',
+    right: -42,
+    top: -46,
+    width: 138,
   },
   topRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 18,
   },
-  iconBubble: {
+  iconShell: {
     alignItems: 'center',
-    borderRadius: 20,
-    height: 52,
+    borderRadius: 18,
+    height: 56,
     justifyContent: 'center',
-    width: 52,
+    width: 56,
   },
   icon: {
     color: '#ffffff',
-    fontSize: 20,
+    fontSize: 14,
     fontWeight: '900',
   },
-  metaBlock: {
+  codeBlock: {
     alignItems: 'flex-end',
   },
-  eyebrow: {
-    fontSize: 12,
+  shortCode: {
+    color: homeColors.softText,
+    fontSize: 11,
     fontWeight: '900',
-    textTransform: 'uppercase',
+    letterSpacing: 0,
   },
   stats: {
-    color: '#6d7280',
     fontSize: 12,
-    fontWeight: '700',
-    marginTop: 3,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  eyebrow: {
+    color: homeColors.primary,
+    fontSize: 12,
+    fontWeight: '900',
+    marginTop: 22,
+    textTransform: 'uppercase',
   },
   title: {
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 0,
     lineHeight: 27,
+    marginTop: 6,
   },
   description: {
-    color: '#697082',
+    color: homeColors.muted,
     fontSize: 14,
-    lineHeight: 20,
+    fontWeight: '700',
+    lineHeight: 21,
     marginTop: 8,
   },
   footer: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 18,
+    marginTop: 22,
   },
-  footerText: {
-    color: '#222838',
+  familyNote: {
+    color: homeColors.text,
     fontSize: 13,
     fontWeight: '900',
   },
-  arrowCircle: {
-    alignItems: 'center',
-    borderRadius: 15,
-    height: 30,
-    justifyContent: 'center',
-    width: 30,
-  },
-  arrow: {
-    color: '#ffffff',
-    fontSize: 24,
+  footerText: {
+    color: homeColors.muted,
+    fontSize: 12,
     fontWeight: '700',
-    marginTop: -2,
+    marginTop: 3,
+  },
+  enterButton: {
+    alignItems: 'center',
+    borderRadius: 16,
+    justifyContent: 'center',
+    minHeight: 38,
+    paddingHorizontal: 16,
+  },
+  enterText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
   },
 });
