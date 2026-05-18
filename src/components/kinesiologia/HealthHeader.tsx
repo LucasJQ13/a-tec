@@ -19,11 +19,11 @@ export function HealthHeader({ onBack }: HealthHeaderProps) {
 
       <View style={styles.mainRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>L</Text>
+          <Text style={styles.avatarText}>F</Text>
         </View>
         <View style={styles.copy}>
-          <Text style={styles.welcome}>Bienvenida Licenciada Fernanda</Text>
-          <Text style={styles.subtitle}>Gestión de pacientes, sesiones y tratamientos</Text>
+          <Text style={styles.welcome}>Bienvenida Lic. Fernanda</Text>
+          <Text style={styles.subtitle}>Gestion de pacientes, sesiones y tratamientos</Text>
         </View>
       </View>
     </View>
@@ -47,8 +47,8 @@ const styles = StyleSheet.create({
   backButton: {
     backgroundColor: healthColors.night,
     borderColor: healthColors.cream,
-    borderWidth: 1,
     borderRadius: 18,
+    borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 8,
   },

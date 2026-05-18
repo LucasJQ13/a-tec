@@ -10,9 +10,9 @@ export function ElectricidadScreen({ onBack }: ElectricidadScreenProps) {
       title="Servicio de Electricidad"
       subtitle="Presupuestos, materiales, instalaciones y trabajos electricos."
       welcome="Bienvenido Lucas"
-      moduleSubtitle="Gestión de servicios eléctricos"
-      accent="#f5a524"
-      icon="E"
+      moduleSubtitle="Gestion de servicios electricos"
+      accent="#F59E0B"
+      icon="⚡"
       onBack={onBack}
     />
   );

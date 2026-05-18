@@ -10,9 +10,9 @@ export function ImprentaScreen({ onBack }: ImprentaScreenProps) {
       title="Servicio de Imprenta"
       subtitle="Disenos, impresiones, pedidos, costos y entregas."
       welcome="Bienvenidos Fer y Lucas"
-      moduleSubtitle="Gestión de servicios de imprenta"
-      accent="#8f5cf7"
-      icon="CMYK"
+      moduleSubtitle="Gestion de servicios de imprenta"
+      accent="#B15CFF"
+      icon="▣"
       onBack={onBack}
     />
   );

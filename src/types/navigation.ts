@@ -4,34 +4,30 @@ export type AppScreen = MainTabId | 'electricidad' | 'kinesiologia' | 'imprenta'
 
 export type AreaId = 'electricidad' | 'kinesiologia' | 'imprenta';
 
-export type AreaConfig = {
+export type ModuleConfig = {
   id: AreaId;
   title: string;
-  label: string;
   description: string;
+  greeting: string;
+  subtitle: string;
+  chip: string;
   icon: string;
-  eyebrow: string;
-  shortCode: string;
   accent: string;
   accentSoft: string;
-  surface: string;
-  textColor: string;
-  stats: string;
-  operationalHint: string;
-  familyNote: string;
+  accentDark: string;
+  preview: string;
 };
 
-export type SummaryMetric = {
-  label: string;
-  value: string;
-  caption: string;
-  icon: string;
-  tone: 'primary' | 'electric' | 'health' | 'print';
-};
-
-export type QuickAction = {
+export type MetricConfig = {
   id: string;
   label: string;
-  caption: string;
+  value: string;
   icon: string;
+};
+
+export type QuickActionConfig = {
+  id: string;
+  label: string;
+  icon: string;
+  variant: 'primary' | 'secondary';
 };

@@ -1,7 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, StyleSheet, View } from 'react-native';
 import { useState } from 'react';
-import { BottomNav } from './src/components/BottomNav';
+import { FloatingDockNav } from './src/components/FloatingDockNav';
 import { ElectricidadScreen } from './src/screens/ElectricidadScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ImprentaScreen } from './src/screens/ImprentaScreen';
@@ -57,7 +57,7 @@ export default function App() {
         ) : null}
 
         {['home', 'clients', 'reports', 'settings'].includes(activeScreen) ? (
-          <BottomNav activeTab={activeTab} onChangeTab={openTab} />
+          <FloatingDockNav activeTab={activeTab} onChangeTab={openTab} />
         ) : null}
       </View>
     </SafeAreaView>
