@@ -67,6 +67,6 @@ const styles = StyleSheet.create({
     width: 38,
   },
   activeIndicator: {
-    backgroundColor: healthColors.burgundy,
+    backgroundColor: healthColors.night,
   },
 });

@@ -6,6 +6,10 @@ type ModulePlaceholderProps = {
   welcome?: string;
   moduleSubtitle?: string;
   accent: string;
+  secondaryAccent?: string;
+  backgroundColor?: string;
+  surfaceColor?: string;
+  textColor?: string;
   icon: string;
   onBack: () => void;
 };
@@ -16,31 +20,41 @@ export function ModulePlaceholder({
   welcome,
   moduleSubtitle,
   accent,
+  secondaryAccent,
+  backgroundColor = '#ffffff',
+  surfaceColor = '#ffffff',
+  textColor = '#202334',
   icon,
   onBack,
 }: ModulePlaceholderProps) {
+  const detailColor = secondaryAccent ?? accent;
+
   return (
-    <View style={styles.screen}>
-      <TouchableOpacity activeOpacity={0.8} onPress={onBack} style={styles.backButton}>
-        <Text style={styles.backText}>Volver</Text>
+    <View style={[styles.screen, { backgroundColor }]}>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={onBack}
+        style={[styles.backButton, { borderColor: accent }]}
+      >
+        <Text style={[styles.backText, { color: accent }]}>Volver</Text>
       </TouchableOpacity>
 
-      <View style={[styles.iconBubble, { backgroundColor: accent }]}>
+      <View style={[styles.iconBubble, { backgroundColor: detailColor }]}>
         <Text style={styles.icon}>{icon}</Text>
       </View>
 
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { color: textColor }]}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
 
       {welcome && moduleSubtitle ? (
-        <View style={[styles.welcomeCard, { borderLeftColor: accent }]}>
-          <Text style={styles.welcomeTitle}>{welcome}</Text>
+        <View style={[styles.welcomeCard, { backgroundColor: surfaceColor, borderLeftColor: detailColor }]}>
+          <Text style={[styles.welcomeTitle, { color: textColor }]}>{welcome}</Text>
           <Text style={styles.welcomeSubtitle}>{moduleSubtitle}</Text>
         </View>
       ) : null}
 
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Modulo en preparacion</Text>
+      <View style={[styles.card, { backgroundColor: surfaceColor }]}>
+        <Text style={[styles.cardTitle, { color: textColor }]}>Modulo en preparacion</Text>
         <Text style={styles.cardText}>
           Esta pantalla queda lista como entrada visual para desarrollar el flujo especifico en el siguiente bloque.
         </Text>
@@ -60,6 +74,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'flex-start',
     backgroundColor: '#ffffff',
+    borderWidth: 1,
     borderRadius: 18,
     minHeight: 42,
     justifyContent: 'center',

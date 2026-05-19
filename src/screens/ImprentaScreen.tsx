@@ -12,7 +12,7 @@ export function ImprentaScreen({ onBack }: ImprentaScreenProps) {
       welcome="Bienvenidos Fer y Lucas"
       moduleSubtitle="Gestion de servicios de imprenta"
       accent="#B15CFF"
-      icon="▣"
+      icon="IM"
       onBack={onBack}
     />
   );

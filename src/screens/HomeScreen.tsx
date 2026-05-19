@@ -1,8 +1,8 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { HeroFamilyHeader } from '../components/HeroFamilyHeader';
+import { HorizontalModuleRail } from '../components/HorizontalModuleRail';
 import { MetricsGlassStrip } from '../components/MetricsGlassStrip';
 import { QuickActionPill } from '../components/QuickActionPill';
-import { ServiceHubCard } from '../components/ServiceHubCard';
 import { homeColors } from '../constants/homeTheme';
 import { HOME_COPY, METRICS, MODULES_CONFIG, QUICK_ACTIONS } from '../data/appAreas';
 import type { AreaId } from '../types/navigation';
@@ -25,14 +25,10 @@ export function HomeScreen({ onOpenArea }: HomeScreenProps) {
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Service Hub</Text>
-        <Text style={styles.sectionHint}>Elegir modulo de trabajo</Text>
+        <Text style={styles.sectionHint}>Puertas de entrada a cada servicio</Text>
       </View>
 
-      <View style={styles.modulesList}>
-        {MODULES_CONFIG.map((module) => (
-          <ServiceHubCard key={module.id} module={module} onPress={() => onOpenArea(module.id)} />
-        ))}
-      </View>
+      <HorizontalModuleRail modules={MODULES_CONFIG} onOpenArea={onOpenArea} />
 
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Accesos rapidos</Text>
@@ -68,10 +64,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginTop: 4,
-  },
-  modulesList: {
-    marginTop: 14,
-    paddingHorizontal: 18,
   },
   actionsWrap: {
     flexDirection: 'row',

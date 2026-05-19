@@ -18,7 +18,7 @@ export function HealthBottomNav() {
         return (
           <TouchableOpacity key={item.id} activeOpacity={0.8} style={styles.item}>
             <View style={[styles.iconBubble, active ? styles.activeIconBubble : null]}>
-              <Text style={styles.icon}>{item.icon}</Text>
+              <Text style={[styles.icon, active ? styles.activeIcon : null]}>{item.icon}</Text>
             </View>
             <Text style={styles.label}>{item.label}</Text>
           </TouchableOpacity>
@@ -57,12 +57,15 @@ const styles = StyleSheet.create({
     width: 30,
   },
   activeIconBubble: {
-    backgroundColor: healthColors.burgundy,
+    backgroundColor: healthColors.cream,
   },
   icon: {
     color: healthColors.cream,
     fontSize: 13,
     fontWeight: '900',
+  },
+  activeIcon: {
+    color: healthColors.night,
   },
   label: {
     color: healthColors.cream,

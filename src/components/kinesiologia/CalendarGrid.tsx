@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   },
   selectedDay: {
     backgroundColor: healthColors.night,
-    borderColor: healthColors.burgundy,
+    borderColor: healthColors.night,
   },
   dayText: {
     color: healthColors.night,

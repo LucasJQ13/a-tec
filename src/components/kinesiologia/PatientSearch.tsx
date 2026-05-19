@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   line: {
-    backgroundColor: healthColors.burgundy,
+    backgroundColor: healthColors.night,
     borderRadius: 2,
     flex: 1,
     height: 3,
