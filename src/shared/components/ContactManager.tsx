@@ -37,7 +37,9 @@ function inputFromContact(contact: Contact): ContactInput {
 }
 
 export function ContactManager({ config }: ContactManagerProps) {
-  const { filteredContacts, loading, query, saveContact, setQuery } = useContacts(config.moduleKey);
+  const { error, filteredContacts, loading, query, refresh, saveContact, setQuery, source } = useContacts(
+    config.moduleKey
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
@@ -97,7 +99,7 @@ export function ContactManager({ config }: ContactManagerProps) {
             {config.labels.contactsLabel}
           </Text>
           <Text style={[styles.sectionSubtitle, { color: config.colors.muted }]}>
-            Alta, busqueda y edicion local
+            {source === 'supabase' ? 'Sincronizado con Supabase' : 'Modo local con reintento disponible'}
           </Text>
         </View>
         <TouchableOpacity
@@ -118,6 +120,22 @@ export function ContactManager({ config }: ContactManagerProps) {
           style={[styles.searchInput, { color: config.colors.text }]}
         />
       </View>
+
+      {error ? (
+        <View style={[styles.errorBox, { borderColor: config.colors.border }]}>
+          <View style={styles.errorCopy}>
+            <Text style={[styles.errorTitle, { color: config.colors.text }]}>Sincronizacion pendiente</Text>
+            <Text style={[styles.errorText, { color: config.colors.muted }]}>{error}</Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.84}
+            onPress={refresh}
+            style={[styles.retryButton, { backgroundColor: config.colors.primary }]}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {formOpen ? (
         <View style={[styles.formCard, { backgroundColor: config.colors.surface, borderColor: config.colors.border }]}>
@@ -379,6 +397,41 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     minHeight: 48,
     paddingHorizontal: 14,
+  },
+  errorBox: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.72)',
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginTop: 12,
+    padding: 12,
+  },
+  errorCopy: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  errorTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  errorText: {
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  retryButton: {
+    alignItems: 'center',
+    borderRadius: 14,
+    minHeight: 38,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '900',
   },
   formCard: {
     borderRadius: 24,
