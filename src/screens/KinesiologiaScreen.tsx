@@ -4,15 +4,14 @@ import { CalendarGrid } from '../components/kinesiologia/CalendarGrid';
 import { HealthBottomNav } from '../components/kinesiologia/HealthBottomNav';
 import { HealthHeader } from '../components/kinesiologia/HealthHeader';
 import { ModuleTabs, type KinesiologyTab } from '../components/kinesiologia/ModuleTabs';
-import { PatientCard } from '../components/kinesiologia/PatientCard';
-import { PatientSearch } from '../components/kinesiologia/PatientSearch';
 import { ServiceCard } from '../components/kinesiologia/ServiceCard';
 import { TimeSlotGrid } from '../components/kinesiologia/TimeSlotGrid';
 import { healthColors } from '../constants/healthTheme';
+import { ContactManager } from '../shared/components/ContactManager';
+import { MODULE_FEATURE_CONFIG } from '../shared/config/moduleConfig';
 import {
   availableTimes,
   calendarDays,
-  kinesiologyPatients,
   kinesiologyServices,
   profileSpecialties,
 } from '../data/kinesiologiaMock';
@@ -22,7 +21,7 @@ type KinesiologiaScreenProps = {
 };
 
 export function KinesiologiaScreen({ onBack }: KinesiologiaScreenProps) {
-  const [activeTab, setActiveTab] = useState<KinesiologyTab>('services');
+  const [activeTab, setActiveTab] = useState<KinesiologyTab>('patients');
 
   return (
     <View style={styles.screen}>
@@ -30,6 +29,7 @@ export function KinesiologiaScreen({ onBack }: KinesiologiaScreenProps) {
         <HealthHeader onBack={onBack} />
         <ModuleTabs activeTab={activeTab} onChangeTab={setActiveTab} />
 
+        {activeTab === 'patients' ? <PatientsTab /> : null}
         {activeTab === 'services' ? <ServicesTab /> : null}
         {activeTab === 'dates' ? <DatesTab /> : null}
         {activeTab === 'profile' ? <ProfileTab /> : null}
@@ -52,20 +52,14 @@ function ServicesTab() {
           <ServiceCard key={service.id} icon={service.icon} title={service.title} />
         ))}
       </View>
+    </View>
+  );
+}
 
-      <PatientSearch />
-
-      <View style={styles.patientList}>
-        {kinesiologyPatients.map((patient) => (
-          <PatientCard
-            key={patient.id}
-            name={patient.name}
-            nextSession={patient.nextSession}
-            state={patient.state}
-            initials={patient.initials}
-          />
-        ))}
-      </View>
+function PatientsTab() {
+  return (
+    <View style={styles.tabContent}>
+      <ContactManager config={MODULE_FEATURE_CONFIG.kinesiologia} />
     </View>
   );
 }
@@ -153,9 +147,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
     justifyContent: 'space-between',
-  },
-  patientList: {
-    marginTop: 4,
   },
   profileCard: {
     backgroundColor: healthColors.cream,

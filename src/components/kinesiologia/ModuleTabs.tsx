@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { healthColors } from '../../constants/healthTheme';
 
-export type KinesiologyTab = 'services' | 'dates' | 'profile';
+export type KinesiologyTab = 'patients' | 'services' | 'dates' | 'profile';
 
 type ModuleTabsProps = {
   activeTab: KinesiologyTab;
@@ -9,6 +9,7 @@ type ModuleTabsProps = {
 };
 
 const tabs: Array<{ id: KinesiologyTab; label: string }> = [
+  { id: 'patients', label: 'Pacientes' },
   { id: 'services', label: 'Servicios' },
   { id: 'dates', label: 'Fechas' },
   { id: 'profile', label: 'Perfil' },
