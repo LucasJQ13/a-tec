@@ -1,4 +1,3 @@
-import { homeColors } from '../constants/homeTheme';
 import type { MetricConfig, ModuleConfig, QuickActionConfig } from '../types/navigation';
 
 export const MODULES_CONFIG: ModuleConfig[] = [
@@ -36,9 +35,9 @@ export const MODULES_CONFIG: ModuleConfig[] = [
     subtitle: 'Gestion de servicios de imprenta',
     chip: 'Fer y Lucas',
     icon: 'IM',
-    accent: '#B15CFF',
-    accentSoft: '#F4E8FF',
-    accentDark: '#663399',
+    accent: '#B08D57',
+    accentSoft: '#F4EBD8',
+    accentDark: '#102A43',
     preview: 'Creatividad con control',
   },
 ];
@@ -56,11 +55,3 @@ export const QUICK_ACTIONS: QuickActionConfig[] = [
   { id: 'work', label: 'Nuevo trabajo', icon: 'T', variant: 'secondary' },
   { id: 'reports', label: 'Reportes', icon: 'R', variant: 'secondary' },
 ];
-
-export const HOME_COPY = {
-  heroLabel: 'A-Tec',
-  greeting: 'Bienvenidos Fer y Lucas',
-  subtitle: 'Ecosistema familiar de servicios',
-  description: 'Gestion compacta para electricidad, salud e imprenta',
-  primaryColor: homeColors.primary,
-};

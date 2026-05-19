@@ -1,25 +1,21 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { HeroFamilyHeader } from '../components/HeroFamilyHeader';
+import { AcademicHeader } from '../components/AcademicHeader';
 import { HorizontalModuleRail } from '../components/HorizontalModuleRail';
 import { MetricsGlassStrip } from '../components/MetricsGlassStrip';
 import { QuickActionPill } from '../components/QuickActionPill';
-import { homeColors } from '../constants/homeTheme';
-import { HOME_COPY, METRICS, MODULES_CONFIG, QUICK_ACTIONS } from '../data/appAreas';
-import type { AreaId } from '../types/navigation';
+import { academicTheme, homeColors } from '../config/theme.config';
+import { METRICS, MODULES_CONFIG, QUICK_ACTIONS } from '../config/modules.config';
+import type { AreaId, UserProfile } from '../types/navigation';
 
 type HomeScreenProps = {
   onOpenArea: (area: AreaId) => void;
+  selectedUser: UserProfile | null;
 };
 
-export function HomeScreen({ onOpenArea }: HomeScreenProps) {
+export function HomeScreen({ onOpenArea, selectedUser }: HomeScreenProps) {
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-      <HeroFamilyHeader
-        label={HOME_COPY.heroLabel}
-        greeting={HOME_COPY.greeting}
-        subtitle={HOME_COPY.subtitle}
-        description={HOME_COPY.description}
-      />
+      <AcademicHeader selectedUser={selectedUser} />
 
       <MetricsGlassStrip metrics={METRICS} />
 
@@ -54,13 +50,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   sectionTitle: {
-    color: homeColors.text,
+    color: academicTheme.colors.textLight,
     fontSize: 21,
     fontWeight: '900',
     letterSpacing: 0,
   },
   sectionHint: {
-    color: homeColors.muted,
+    color: '#D2BF99',
     fontSize: 13,
     fontWeight: '700',
     marginTop: 4,

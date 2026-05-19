@@ -31,3 +31,12 @@ export type QuickActionConfig = {
   icon: string;
   variant: 'primary' | 'secondary';
 };
+
+export type UserProfileId = 'lucas' | 'fernanda';
+
+export type UserProfile = {
+  id: UserProfileId;
+  name: string;
+  role: string;
+  initial: string;
+};

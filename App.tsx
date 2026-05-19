@@ -1,19 +1,33 @@
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView, StyleSheet, View } from 'react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FloatingDockNav } from './src/components/FloatingDockNav';
+import { academicTheme, homeColors } from './src/config/theme.config';
 import { ElectricidadScreen } from './src/screens/ElectricidadScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ImprentaScreen } from './src/screens/ImprentaScreen';
 import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
-import type { AppScreen, AreaId, MainTabId } from './src/types/navigation';
-import { homeColors } from './src/constants/homeTheme';
+import { SplashScreen } from './src/screens/SplashScreen';
+import { WelcomeUserScreen } from './src/screens/WelcomeUserScreen';
+import type { AppScreen, AreaId, MainTabId, UserProfile } from './src/types/navigation';
 import { healthColors } from './src/constants/healthTheme';
 
+type AppFlowStep = 'splash' | 'welcome' | 'main';
+
 export default function App() {
+  const [flowStep, setFlowStep] = useState<AppFlowStep>('splash');
   const [activeScreen, setActiveScreen] = useState<AppScreen>('home');
   const [activeTab, setActiveTab] = useState<MainTabId>('home');
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setFlowStep('welcome');
+    }, 1900);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const openArea = (area: AreaId) => {
     setActiveScreen(area);
@@ -29,11 +43,36 @@ export default function App() {
     setActiveScreen('home');
   };
 
+  const selectUser = (user: UserProfile) => {
+    setSelectedUser(user);
+    setActiveTab('home');
+    setActiveScreen('home');
+    setFlowStep('main');
+  };
+
+  if (flowStep === 'splash') {
+    return (
+      <SafeAreaView style={styles.darkSafeArea}>
+        <StatusBar style="light" />
+        <SplashScreen />
+      </SafeAreaView>
+    );
+  }
+
+  if (flowStep === 'welcome') {
+    return (
+      <SafeAreaView style={styles.darkSafeArea}>
+        <StatusBar style="light" />
+        <WelcomeUserScreen onSelectUser={selectUser} />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.safeArea, activeScreen === 'kinesiologia' ? styles.healthSafeArea : null]}>
-      <StatusBar style="dark" />
+      <StatusBar style={activeScreen === 'home' ? 'light' : 'dark'} />
       <View style={[styles.appShell, activeScreen === 'kinesiologia' ? styles.healthShell : null]}>
-        {activeScreen === 'home' ? <HomeScreen onOpenArea={openArea} /> : null}
+        {activeScreen === 'home' ? <HomeScreen onOpenArea={openArea} selectedUser={selectedUser} /> : null}
         {activeScreen === 'electricidad' ? <ElectricidadScreen onBack={backHome} /> : null}
         {activeScreen === 'kinesiologia' ? <KinesiologiaScreen onBack={backHome} /> : null}
         {activeScreen === 'imprenta' ? <ImprentaScreen onBack={backHome} /> : null}
@@ -65,6 +104,10 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
+  darkSafeArea: {
+    backgroundColor: academicTheme.colors.night,
+    flex: 1,
+  },
   safeArea: {
     backgroundColor: homeColors.primary,
     flex: 1,
