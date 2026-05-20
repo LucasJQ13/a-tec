@@ -1,10 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedLoadingBar } from '../components/AnimatedLoadingBar';
 import { academicTheme } from '../config/theme.config';
 
 export function SplashScreen() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <View style={styles.glow} />
       <View style={styles.brandBox}>
         <Text style={styles.brand}>A-Tec</Text>

@@ -1,4 +1,6 @@
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePullRefresh } from '../shared/hooks/usePullRefresh';
 
 type ImprentaScreenProps = {
   onBack: () => void;
@@ -24,13 +26,28 @@ const printAccess = [
 ];
 
 export function ImprentaScreen({ onBack }: ImprentaScreenProps) {
+  const insets = useSafeAreaInsets();
+  const { onRefresh, refreshing } = usePullRefresh();
+
   return (
     <View style={styles.screen}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={printColors.primary}
+            colors={[printColors.primary]}
+            progressBackgroundColor="rgba(255,255,255,0.9)"
+          />
+        }
+      >
+        <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
           <View style={styles.headerTop}>
             <TouchableOpacity activeOpacity={0.82} onPress={onBack} style={styles.backButton}>
-              <Text style={styles.backText}>A-Tec</Text>
+              <Text style={styles.backText}>{'<'}</Text>
             </TouchableOpacity>
             <View style={styles.colorDots}>
               <View style={[styles.dot, { backgroundColor: printColors.cyan }]} />
@@ -93,11 +110,10 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: printColors.primary,
-    borderBottomLeftRadius: 34,
-    borderBottomRightRadius: 34,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
     paddingBottom: 28,
     paddingHorizontal: 22,
-    paddingTop: 18,
   },
   headerTop: {
     alignItems: 'center',
@@ -106,10 +122,12 @@ const styles = StyleSheet.create({
   },
   backButton: {
     borderColor: '#ffffff',
-    borderRadius: 18,
+    alignItems: 'center',
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
   backText: {
     color: '#ffffff',
@@ -151,7 +169,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: printColors.surface,
     borderColor: printColors.border,
-    borderRadius: 26,
+    borderRadius: 14,
     borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -180,7 +198,7 @@ const styles = StyleSheet.create({
   panelMark: {
     alignItems: 'center',
     backgroundColor: printColors.cyan,
-    borderRadius: 18,
+    borderRadius: 10,
     height: 52,
     justifyContent: 'center',
     width: 62,
@@ -217,7 +235,7 @@ const styles = StyleSheet.create({
   accessCard: {
     backgroundColor: printColors.surface,
     borderColor: printColors.border,
-    borderRadius: 22,
+    borderRadius: 14,
     borderWidth: 1,
     minHeight: 132,
     padding: 14,
@@ -225,7 +243,7 @@ const styles = StyleSheet.create({
   },
   accessIcon: {
     alignItems: 'center',
-    borderRadius: 17,
+    borderRadius: 10,
     height: 44,
     justifyContent: 'center',
     width: 44,
@@ -251,7 +269,7 @@ const styles = StyleSheet.create({
   noteCard: {
     backgroundColor: printColors.surface,
     borderColor: printColors.border,
-    borderRadius: 24,
+    borderRadius: 14,
     borderWidth: 1,
     marginHorizontal: 18,
     marginTop: 18,

@@ -1,4 +1,6 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { usePullRefresh } from '../shared/hooks/usePullRefresh';
 
 type ModulePlaceholderProps = {
   title: string;
@@ -28,15 +30,29 @@ export function ModulePlaceholder({
   onBack,
 }: ModulePlaceholderProps) {
   const detailColor = secondaryAccent ?? accent;
+  const insets = useSafeAreaInsets();
+  const { onRefresh, refreshing } = usePullRefresh();
 
   return (
-    <View style={[styles.screen, { backgroundColor }]}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={[styles.screen, { backgroundColor, paddingTop: insets.top + 16 }]}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={accent}
+          colors={[accent]}
+          progressBackgroundColor="rgba(255,255,255,0.86)"
+        />
+      }
+    >
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onBack}
         style={[styles.backButton, { borderColor: accent }]}
       >
-        <Text style={[styles.backText, { color: accent }]}>Volver</Text>
+        <Text style={[styles.backText, { color: accent }]}>{'<'}</Text>
       </TouchableOpacity>
 
       <View style={[styles.iconBubble, { backgroundColor: detailColor }]}>
@@ -59,16 +75,14 @@ export function ModulePlaceholder({
           Esta pantalla queda lista como entrada visual para desarrollar el flujo especifico en el siguiente bloque.
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
     paddingBottom: 110,
     paddingHorizontal: 22,
-    paddingTop: 34,
   },
   backButton: {
     alignItems: 'center',
@@ -76,9 +90,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderWidth: 1,
     borderRadius: 18,
+    height: 42,
     minHeight: 42,
     justifyContent: 'center',
-    paddingHorizontal: 18,
+    width: 42,
     shadowColor: '#756a91',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
@@ -91,7 +106,7 @@ const styles = StyleSheet.create({
   },
   iconBubble: {
     alignItems: 'center',
-    borderRadius: 34,
+    borderRadius: 14,
     height: 68,
     justifyContent: 'center',
     marginTop: 46,
@@ -104,7 +119,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: '#202334',
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '900',
     letterSpacing: 0,
     lineHeight: 38,
@@ -119,7 +134,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 26,
+    borderRadius: 14,
     marginTop: 28,
     padding: 20,
     shadowColor: '#756a91',
@@ -130,7 +145,7 @@ const styles = StyleSheet.create({
   welcomeCard: {
     backgroundColor: '#ffffff',
     borderLeftWidth: 5,
-    borderRadius: 24,
+    borderRadius: 14,
     marginTop: 24,
     padding: 18,
     shadowColor: '#756a91',

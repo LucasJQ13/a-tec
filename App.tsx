@@ -1,8 +1,11 @@
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
 import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FloatingDockNav } from './src/components/FloatingDockNav';
-import { academicTheme, homeColors } from './src/config/theme.config';
+import { homeColors } from './src/config/theme.config';
 import { ElectricidadScreen } from './src/screens/ElectricidadScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ImprentaScreen } from './src/screens/ImprentaScreen';
@@ -10,15 +13,116 @@ import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { WelcomeUserScreen } from './src/screens/WelcomeUserScreen';
-import type { AppScreen, AreaId, MainTabId, UserProfile } from './src/types/navigation';
-import { healthColors } from './src/constants/healthTheme';
+import type { AreaId, MainTabId, RootStackParamList, UserProfile } from './src/types/navigation';
 
 type AppFlowStep = 'splash' | 'welcome' | 'main';
 
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+function tabForRoute(routeName: keyof RootStackParamList): MainTabId {
+  if (routeName === 'Clients') return 'clients';
+  if (routeName === 'Reports') return 'reports';
+  if (routeName === 'Settings') return 'settings';
+  return 'home';
+}
+
+function routeForArea(area: AreaId): keyof RootStackParamList {
+  if (area === 'electricidad') return 'Electricidad';
+  if (area === 'kinesiologia') return 'Kinesiologia';
+  return 'Imprenta';
+}
+
+function routeForTab(tab: MainTabId): keyof RootStackParamList {
+  if (tab === 'clients') return 'Clients';
+  if (tab === 'reports') return 'Reports';
+  if (tab === 'settings') return 'Settings';
+  return 'Home';
+}
+
+type MainNavigatorProps = {
+  selectedUser: UserProfile | null;
+};
+
+function MainNavigator({ selectedUser }: MainNavigatorProps) {
+  const [activeTab, setActiveTab] = useState<MainTabId>('home');
+  const [activeRoute, setActiveRoute] = useState<keyof RootStackParamList>('Home');
+
+  return (
+    <NavigationContainer
+      ref={navigationRef}
+      onStateChange={(state) => {
+        const route = state?.routes[state.index ?? 0]?.name as keyof RootStackParamList | undefined;
+        if (route) {
+          setActiveRoute(route);
+          setActiveTab(tabForRoute(route));
+        }
+      }}
+    >
+      <View style={styles.navigatorShell}>
+        <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+          <Stack.Screen name="Home">
+            {({ navigation }) => (
+              <HomeScreen
+                selectedUser={selectedUser}
+                onOpenArea={(area) => navigation.navigate(routeForArea(area))}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Electricidad">
+            {({ navigation }) => <ElectricidadScreen onBack={() => navigation.goBack()} />}
+          </Stack.Screen>
+          <Stack.Screen name="Kinesiologia">
+            {({ navigation }) => <KinesiologiaScreen onBack={() => navigation.goBack()} />}
+          </Stack.Screen>
+          <Stack.Screen name="Imprenta">
+            {({ navigation }) => <ImprentaScreen onBack={() => navigation.goBack()} />}
+          </Stack.Screen>
+          <Stack.Screen name="Clients">
+            {() => (
+              <PlaceholderScreen
+                title="Clientes"
+                subtitle="Listado, busqueda y ficha de clientes se desarrollaran en otro bloque."
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Reports">
+            {() => (
+              <PlaceholderScreen
+                title="Reportes"
+                subtitle="Resumenes simples y metricas visuales se sumaran despues de los modulos base."
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Settings">
+            {() => (
+              <PlaceholderScreen
+                title="Ajustes"
+                subtitle="Datos de A-Tec, preferencias visuales y configuracion general."
+              />
+            )}
+          </Stack.Screen>
+        </Stack.Navigator>
+
+        {['Home', 'Clients', 'Reports', 'Settings'].includes(activeRoute) ? (
+          <FloatingDockNav
+            activeTab={activeTab}
+            onChangeTab={(tab) => {
+              setActiveTab(tab);
+              const route = routeForTab(tab);
+              if (navigationRef.isReady()) {
+                navigationRef.navigate(route);
+              }
+            }}
+          />
+        ) : null}
+      </View>
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   const [flowStep, setFlowStep] = useState<AppFlowStep>('splash');
-  const [activeScreen, setActiveScreen] = useState<AppScreen>('home');
-  const [activeTab, setActiveTab] = useState<MainTabId>('home');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -29,97 +133,24 @@ export default function App() {
     return () => clearTimeout(timer);
   }, []);
 
-  const openArea = (area: AreaId) => {
-    setActiveScreen(area);
-  };
-
-  const openTab = (tab: MainTabId) => {
-    setActiveTab(tab);
-    setActiveScreen(tab);
-  };
-
-  const backHome = () => {
-    setActiveTab('home');
-    setActiveScreen('home');
-  };
-
   const selectUser = (user: UserProfile) => {
     setSelectedUser(user);
-    setActiveTab('home');
-    setActiveScreen('home');
     setFlowStep('main');
   };
 
-  if (flowStep === 'splash') {
-    return (
-      <SafeAreaView style={styles.darkSafeArea}>
-        <StatusBar style="light" />
-        <SplashScreen />
-      </SafeAreaView>
-    );
-  }
-
-  if (flowStep === 'welcome') {
-    return (
-      <SafeAreaView style={styles.darkSafeArea}>
-        <StatusBar style="light" />
-        <WelcomeUserScreen onSelectUser={selectUser} />
-      </SafeAreaView>
-    );
-  }
-
   return (
-    <SafeAreaView style={[styles.safeArea, activeScreen === 'kinesiologia' ? styles.healthSafeArea : null]}>
-      <StatusBar style={activeScreen === 'home' ? 'light' : 'dark'} />
-      <View style={[styles.appShell, activeScreen === 'kinesiologia' ? styles.healthShell : null]}>
-        {activeScreen === 'home' ? <HomeScreen onOpenArea={openArea} selectedUser={selectedUser} /> : null}
-        {activeScreen === 'electricidad' ? <ElectricidadScreen onBack={backHome} /> : null}
-        {activeScreen === 'kinesiologia' ? <KinesiologiaScreen onBack={backHome} /> : null}
-        {activeScreen === 'imprenta' ? <ImprentaScreen onBack={backHome} /> : null}
-        {activeScreen === 'clients' ? (
-          <PlaceholderScreen
-            title="Clientes"
-            subtitle="Listado, busqueda y ficha de clientes se desarrollaran en otro bloque."
-          />
-        ) : null}
-        {activeScreen === 'reports' ? (
-          <PlaceholderScreen
-            title="Reportes"
-            subtitle="Resumenes simples y metricas visuales se sumaran despues de los modulos base."
-          />
-        ) : null}
-        {activeScreen === 'settings' ? (
-          <PlaceholderScreen
-            title="Ajustes"
-            subtitle="Datos de A-Tec, preferencias visuales y configuracion general."
-          />
-        ) : null}
-
-        {['home', 'clients', 'reports', 'settings'].includes(activeScreen) ? (
-          <FloatingDockNav activeTab={activeTab} onChangeTab={openTab} />
-        ) : null}
-      </View>
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <StatusBar translucent backgroundColor="transparent" style={flowStep === 'main' ? 'light' : 'light'} />
+      {flowStep === 'splash' ? <SplashScreen /> : null}
+      {flowStep === 'welcome' ? <WelcomeUserScreen onSelectUser={selectUser} /> : null}
+      {flowStep === 'main' ? <MainNavigator selectedUser={selectedUser} /> : null}
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  darkSafeArea: {
-    backgroundColor: academicTheme.colors.night,
-    flex: 1,
-  },
-  safeArea: {
-    backgroundColor: homeColors.primary,
-    flex: 1,
-  },
-  healthSafeArea: {
-    backgroundColor: healthColors.night,
-  },
-  appShell: {
+  navigatorShell: {
     backgroundColor: homeColors.background,
     flex: 1,
-  },
-  healthShell: {
-    backgroundColor: healthColors.cream,
   },
 });

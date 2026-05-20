@@ -5,11 +5,12 @@ import type { ModuleConfig } from '../types/navigation';
 type ModuleSquareCardProps = {
   module: ModuleConfig;
   onPress: () => void;
+  size: number;
 };
 
-export function ModuleSquareCard({ module, onPress }: ModuleSquareCardProps) {
+export function ModuleSquareCard({ module, onPress, size }: ModuleSquareCardProps) {
   return (
-    <TouchableOpacity activeOpacity={0.88} onPress={onPress} style={styles.card}>
+    <TouchableOpacity activeOpacity={0.88} onPress={onPress} style={[styles.card, { height: size * 1.05, width: size }]}>
       <View style={[styles.softOrb, { backgroundColor: module.accentSoft }]} />
       <View style={[styles.iconCircle, { backgroundColor: module.accent }]}>
         <Text style={styles.iconText}>{module.icon}</Text>
@@ -25,7 +26,9 @@ export function ModuleSquareCard({ module, onPress }: ModuleSquareCardProps) {
       </View>
 
       <View style={styles.footer}>
-        <Text style={[styles.chip, { color: module.accentDark }]}>{module.chip}</Text>
+        <Text style={[styles.chip, { color: module.accentDark }]} numberOfLines={1}>
+          {module.chip}
+        </Text>
         <View style={[styles.arrowBubble, { borderColor: module.accent }]}>
           <Text style={[styles.arrow, { color: module.accent }]}>{'>'}</Text>
         </View>
@@ -40,7 +43,6 @@ const styles = StyleSheet.create({
     borderColor: homeColors.border,
     borderRadius: homeRadii.service,
     borderWidth: 1,
-    height: 158,
     marginRight: 16,
     overflow: 'hidden',
     padding: 16,
@@ -48,7 +50,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.12,
     shadowRadius: 24,
-    width: 158,
     elevation: 5,
   },
   softOrb: {
@@ -63,9 +64,9 @@ const styles = StyleSheet.create({
   iconCircle: {
     alignItems: 'center',
     borderRadius: 23,
-    height: 46,
+    height: 44,
     justifyContent: 'center',
-    width: 46,
+    width: 44,
   },
   iconText: {
     color: '#ffffff',
@@ -77,7 +78,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: homeColors.text,
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '900',
     letterSpacing: 0,
   },
@@ -98,8 +99,10 @@ const styles = StyleSheet.create({
     right: 16,
   },
   chip: {
+    flex: 1,
     fontSize: 11,
     fontWeight: '900',
+    paddingRight: 8,
   },
   arrowBubble: {
     alignItems: 'center',

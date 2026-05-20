@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { academicTheme } from '../config/theme.config';
 import type { UserProfile } from '../types/navigation';
 
@@ -7,8 +8,10 @@ type AcademicHeaderProps = {
 };
 
 export function AcademicHeader({ selectedUser }: AcademicHeaderProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + 14 }]}>
       <View style={styles.ornamentTop} />
       <View style={styles.topRow}>
         <Text style={styles.brand}>A-Tec</Text>
@@ -32,11 +35,10 @@ const styles = StyleSheet.create({
     backgroundColor: academicTheme.colors.primary,
     borderBottomLeftRadius: academicTheme.radii.hero,
     borderBottomRightRadius: academicTheme.radii.hero,
-    minHeight: 258,
+    minHeight: 270,
     overflow: 'hidden',
     paddingBottom: 28,
     paddingHorizontal: 22,
-    paddingTop: 18,
     shadowColor: academicTheme.colors.shadow,
     shadowOffset: { width: 0, height: 18 },
     shadowOpacity: 0.28,
@@ -84,7 +86,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: academicTheme.colors.textLight,
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '900',
     letterSpacing: 0,
     lineHeight: 36,

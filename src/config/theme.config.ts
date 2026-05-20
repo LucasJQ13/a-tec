@@ -15,9 +15,9 @@ export const academicTheme = {
     shadow: '#031020',
   },
   radii: {
-    hero: 34,
-    card: 24,
-    dock: 28,
+    hero: 18,
+    card: 14,
+    dock: 18,
     pill: 999,
   },
   spacing: {
@@ -45,8 +45,8 @@ export const homeColors = {
 
 export const homeRadii = {
   hero: academicTheme.radii.hero,
-  glass: academicTheme.radii.card,
-  service: academicTheme.radii.card,
+  glass: 16,
+  service: 14,
   dock: academicTheme.radii.dock,
-  pill: academicTheme.radii.pill,
+  pill: 12,
 };

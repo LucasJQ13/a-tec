@@ -35,13 +35,13 @@ export function ModuleTabs({ activeTab, onChangeTab }: ModuleTabsProps) {
 const styles = StyleSheet.create({
   tabs: {
     backgroundColor: healthColors.cream,
-    borderRadius: 24,
+    borderRadius: 14,
     borderColor: healthColors.olive,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
     marginHorizontal: 20,
-    marginTop: -18,
+    marginTop: 14,
     paddingHorizontal: 10,
     paddingVertical: 10,
   },

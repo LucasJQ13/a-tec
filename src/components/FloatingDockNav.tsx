@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { homeColors, homeRadii } from '../constants/homeTheme';
 import type { MainTabId } from '../types/navigation';
 
@@ -15,8 +16,10 @@ const DOCK_ITEMS: Array<{ id: MainTabId; label: string; icon: string }> = [
 ];
 
 export function FloatingDockNav({ activeTab, onChangeTab }: FloatingDockNavProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.dock}>
+    <View style={[styles.dock, { bottom: Math.max(insets.bottom, 10) + 8 }]}>
       {DOCK_ITEMS.map((item) => {
         const isActive = activeTab === item.id;
 
@@ -43,9 +46,8 @@ const styles = StyleSheet.create({
     borderColor: homeColors.border,
     borderRadius: homeRadii.dock,
     borderWidth: 1,
-    bottom: 16,
     flexDirection: 'row',
-    height: 72,
+    height: 66,
     justifyContent: 'space-between',
     left: 18,
     padding: 8,
@@ -61,7 +63,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 999,
     flex: 1,
-    height: 54,
+    height: 48,
     justifyContent: 'center',
   },
   activeItem: {

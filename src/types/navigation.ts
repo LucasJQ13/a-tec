@@ -40,3 +40,13 @@ export type UserProfile = {
   role: string;
   initial: string;
 };
+
+export type RootStackParamList = {
+  Home: undefined;
+  Electricidad: undefined;
+  Kinesiologia: undefined;
+  Imprenta: undefined;
+  Clients: undefined;
+  Reports: undefined;
+  Settings: undefined;
+};

@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { healthColors } from '../../constants/healthTheme';
 
 type HealthHeaderProps = {
@@ -6,11 +7,13 @@ type HealthHeaderProps = {
 };
 
 export function HealthHeader({ onBack }: HealthHeaderProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
       <View style={styles.topRow}>
         <TouchableOpacity activeOpacity={0.8} onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>A-Tec</Text>
+          <Text style={styles.backText}>{'<'}</Text>
         </TouchableOpacity>
         <TouchableOpacity activeOpacity={0.8} style={styles.profileLink}>
           <Text style={styles.profileLinkText}>Ver perfil</Text>
@@ -33,11 +36,10 @@ export function HealthHeader({ onBack }: HealthHeaderProps) {
 const styles = StyleSheet.create({
   header: {
     backgroundColor: healthColors.night,
-    borderBottomLeftRadius: 34,
-    borderBottomRightRadius: 34,
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
     paddingBottom: 26,
     paddingHorizontal: 20,
-    paddingTop: 18,
   },
   topRow: {
     alignItems: 'center',
@@ -47,10 +49,12 @@ const styles = StyleSheet.create({
   backButton: {
     backgroundColor: healthColors.night,
     borderColor: healthColors.cream,
-    borderRadius: 18,
+    borderRadius: 10,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    alignItems: 'center',
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
   },
   backText: {
     color: healthColors.cream,
@@ -93,9 +97,10 @@ const styles = StyleSheet.create({
   },
   welcome: {
     color: healthColors.cream,
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '900',
     letterSpacing: 0,
+    lineHeight: 26,
   },
   subtitle: {
     color: healthColors.cream,

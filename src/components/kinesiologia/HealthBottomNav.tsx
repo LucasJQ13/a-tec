@@ -1,4 +1,5 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { healthColors } from '../../constants/healthTheme';
 
 const navItems = [
@@ -10,8 +11,10 @@ const navItems = [
 ];
 
 export function HealthBottomNav() {
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.wrapper}>
+    <View style={[styles.wrapper, { paddingBottom: Math.max(insets.bottom, 10) }]}>
       {navItems.map((item) => {
         const active = item.id === 'agenda';
 
@@ -32,13 +35,12 @@ const styles = StyleSheet.create({
   wrapper: {
     alignItems: 'center',
     backgroundColor: healthColors.night,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     bottom: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     left: 0,
-    paddingBottom: 14,
     paddingHorizontal: 12,
     paddingTop: 10,
     position: 'absolute',

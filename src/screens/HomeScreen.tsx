@@ -1,10 +1,11 @@
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { AcademicHeader } from '../components/AcademicHeader';
 import { HorizontalModuleRail } from '../components/HorizontalModuleRail';
 import { MetricsGlassStrip } from '../components/MetricsGlassStrip';
 import { QuickActionPill } from '../components/QuickActionPill';
 import { academicTheme, homeColors } from '../config/theme.config';
 import { METRICS, MODULES_CONFIG, QUICK_ACTIONS } from '../config/modules.config';
+import { usePullRefresh } from '../shared/hooks/usePullRefresh';
 import type { AreaId, UserProfile } from '../types/navigation';
 
 type HomeScreenProps = {
@@ -13,8 +14,22 @@ type HomeScreenProps = {
 };
 
 export function HomeScreen({ onOpenArea, selectedUser }: HomeScreenProps) {
+  const { onRefresh, refreshing } = usePullRefresh();
+
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          tintColor={academicTheme.colors.bronzeLight}
+          colors={[academicTheme.colors.bronzeLight]}
+          progressBackgroundColor="rgba(11, 29, 58, 0.72)"
+        />
+      }
+    >
       <AcademicHeader selectedUser={selectedUser} />
 
       <MetricsGlassStrip metrics={METRICS} />
@@ -43,7 +58,7 @@ export function HomeScreen({ onOpenArea, selectedUser }: HomeScreenProps) {
 const styles = StyleSheet.create({
   content: {
     backgroundColor: homeColors.background,
-    paddingBottom: 124,
+    paddingBottom: 132,
   },
   sectionHeader: {
     marginTop: 26,

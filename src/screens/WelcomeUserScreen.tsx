@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { UserChoiceCard } from '../components/UserChoiceCard';
 import { academicTheme } from '../config/theme.config';
 import { USERS_CONFIG } from '../config/users.config';
@@ -9,8 +10,13 @@ type WelcomeUserScreenProps = {
 };
 
 export function WelcomeUserScreen({ onSelectUser }: WelcomeUserScreenProps) {
+  const insets = useSafeAreaInsets();
+
   return (
-    <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 22, paddingBottom: insets.bottom + 22 }]}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <Text style={styles.brand}>A-Tec</Text>
         <Text style={styles.title}>Bienvenidos, como trabajamos hoy?</Text>
