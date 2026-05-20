@@ -238,21 +238,14 @@ export async function getProfessionalProfile() {
   if (data) return profileFromRow(data as ProfileRow);
 
   const timestamp = nowIso();
-  const fallback = {
+  return profileFromRow({
     id: PROFILE_ID,
     nombre_completo: 'Fernanda Canavidez',
     titulo: 'Lic.',
     matricula_profesional: '',
     created_at: timestamp,
     updated_at: timestamp,
-  };
-  const { data: created, error: createError } = await client
-    .from('professional_profiles')
-    .insert(fallback)
-    .select('*')
-    .single();
-  if (createError) throw new Error(createError.message);
-  return profileFromRow(created as ProfileRow);
+  });
 }
 
 export async function saveProfessionalProfile(input: {

@@ -84,6 +84,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<KinesiologiaPatient | null>(null);
   const [query, setQuery] = useState('');
+  const [patientFormVisible, setPatientFormVisible] = useState(false);
   const [patientForm, setPatientForm] = useState<PatientInput>(emptyPatient);
   const [editingPatientId, setEditingPatientId] = useState<string | undefined>();
   const [historyForm, setHistoryForm] = useState({ id: '', fecha: todayDate(), contenido: '' });
@@ -114,13 +115,20 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   const loadBaseData = useCallback(async () => {
     try {
       setError(null);
-      const [loadedPatients, loadedAppointments, loadedProfile] = await Promise.all([
+      const [loadedPatients, loadedAppointments] = await Promise.all([
         listPatients(),
         listAppointments(),
-        getProfessionalProfile(),
       ]);
       setPatients(loadedPatients);
       setAppointments(loadedAppointments);
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'No se pudieron cargar los datos clínicos.');
+    }
+  }, []);
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const loadedProfile = await getProfessionalProfile();
       setProfile(loadedProfile);
       setProfileForm({
         nombreCompleto: loadedProfile.nombreCompleto,
@@ -128,7 +136,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         matriculaProfesional: loadedProfile.matriculaProfesional,
       });
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'No se pudieron cargar los datos clínicos.');
+      setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar el perfil profesional.');
     }
   }, []);
 
@@ -158,6 +166,12 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   }, [loadBaseData]);
 
   useEffect(() => {
+    if (mode === 'history' || mode === 'profile') {
+      loadProfile();
+    }
+  }, [loadProfile, mode]);
+
+  useEffect(() => {
     loadPatientDetails(selectedPatient);
   }, [loadPatientDetails, selectedPatient]);
 
@@ -174,13 +188,16 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
 
   const beginCreatePatient = () => {
     setEditingPatientId(undefined);
+    setSelectedPatient(null);
     setPatientForm(emptyPatient);
+    setPatientFormVisible(true);
   };
 
   const selectPatient = (patient: KinesiologiaPatient) => {
     setSelectedPatient(patient);
-    setEditingPatientId(patient.id);
-    setPatientForm(inputFromPatient(patient));
+    setEditingPatientId(undefined);
+    setPatientForm(emptyPatient);
+    setPatientFormVisible(false);
     setHistoryForm({ id: '', fecha: todayDate(), contenido: '' });
     setVisitForm({
       active: false,
@@ -194,13 +211,23 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     });
   };
 
+  const beginEditPatient = (patient: KinesiologiaPatient) => {
+    setSelectedPatient(patient);
+    setEditingPatientId(patient.id);
+    setPatientForm(inputFromPatient(patient));
+    setPatientFormVisible(true);
+  };
+
   const persistPatient = async () => {
+    const wasEditing = Boolean(editingPatientId);
     setSaving(true);
     try {
       await savePatient(patientForm, editingPatientId);
       await loadBaseData();
-      beginCreatePatient();
-      showToast(editingPatientId ? 'Paciente actualizado' : 'Paciente guardado', 'success');
+      setPatientFormVisible(false);
+      setEditingPatientId(undefined);
+      setPatientForm(emptyPatient);
+      showToast(wasEditing ? 'Paciente actualizado' : 'Paciente guardado', 'success');
     } catch (saveError) {
       showToast(saveError instanceof Error ? saveError.message : 'Error al guardar paciente', 'error');
     } finally {
@@ -299,7 +326,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     setSaving(true);
     try {
       await saveProfessionalProfile(profileForm);
-      await loadBaseData();
+      await loadProfile();
       showToast('Cambios realizados', 'success');
     } catch (saveError) {
       showToast(saveError instanceof Error ? saveError.message : 'Error al guardar perfil', 'error');
@@ -354,14 +381,22 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         onSelect={selectPatient}
       />
 
-      {mode === 'patients' ? (
+      {mode === 'patients' && !patientFormVisible ? (
+        <PrimaryButton label="Nuevo paciente" onPress={beginCreatePatient} />
+      ) : null}
+
+      {mode === 'patients' && patientFormVisible ? (
         <PatientForm
           form={patientForm}
           onChange={setPatientForm}
-          onNew={beginCreatePatient}
+          onCancel={() => {
+            setPatientFormVisible(false);
+            setEditingPatientId(undefined);
+            setPatientForm(emptyPatient);
+          }}
           onSave={persistPatient}
           saving={saving}
-          selectedPatient={selectedPatient}
+          isEditing={Boolean(editingPatientId)}
         />
       ) : null}
 
@@ -372,6 +407,10 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
             Edad: {selectedPatient.fechaNacimiento ? calculateAge(selectedPatient.fechaNacimiento) : selectedPatient.edadEstimada} años
           </Text>
           <Text style={styles.panelText}>{selectedPatient.motivoConsulta}</Text>
+
+          {mode === 'patients' && !patientFormVisible ? (
+            <SecondaryButton label="Editar paciente" onPress={() => beginEditPatient(selectedPatient)} />
+          ) : null}
 
           {(mode === 'patients' || mode === 'history') ? (
             <HistoryPanel
@@ -467,26 +506,26 @@ function PatientPicker({
 function PatientForm({
   form,
   onChange,
-  onNew,
+  onCancel,
   onSave,
   saving,
-  selectedPatient,
+  isEditing,
 }: {
   form: PatientInput;
   onChange: (form: PatientInput) => void;
-  onNew: () => void;
+  onCancel: () => void;
   onSave: () => void;
   saving: boolean;
-  selectedPatient: KinesiologiaPatient | null;
+  isEditing: boolean;
 }) {
   const automaticAge = calculateAge(form.fechaNacimiento);
 
   return (
     <View style={styles.formCard}>
       <View style={styles.formHeader}>
-        <Text style={styles.formTitle}>{selectedPatient ? 'Editar paciente' : 'Nuevo paciente'}</Text>
-        <TouchableOpacity activeOpacity={0.82} onPress={onNew} style={styles.smallButton}>
-          <Text style={styles.smallButtonText}>Nuevo</Text>
+        <Text style={styles.formTitle}>{isEditing ? 'Editar paciente' : 'Nuevo paciente'}</Text>
+        <TouchableOpacity activeOpacity={0.82} onPress={onCancel} style={styles.smallButton}>
+          <Text style={styles.smallButtonText}>Cancelar</Text>
         </TouchableOpacity>
       </View>
       <Field label="Nombre y apellido" value={form.nombreApellido} onChangeText={(nombreApellido) => onChange({ ...form, nombreApellido })} />
@@ -746,6 +785,14 @@ function PrimaryButton({ label, onPress }: { label: string; onPress: () => void 
   );
 }
 
+function SecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={styles.secondaryButton}>
+      <Text style={styles.secondaryButtonText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
   wrapper: {
     gap: 14,
@@ -908,6 +955,21 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: healthColors.cream,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    borderColor: healthColors.night,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: 'center',
+    marginTop: 12,
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  secondaryButtonText: {
+    color: healthColors.night,
     fontSize: 13,
     fontWeight: '900',
   },
