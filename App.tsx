@@ -41,10 +41,11 @@ function routeForTab(tab: MainTabId): keyof RootStackParamList {
 }
 
 type MainNavigatorProps = {
+  onBackToUsers: () => void;
   selectedUser: UserProfile | null;
 };
 
-function MainNavigator({ selectedUser }: MainNavigatorProps) {
+function MainNavigator({ onBackToUsers, selectedUser }: MainNavigatorProps) {
   const [activeTab, setActiveTab] = useState<MainTabId>('home');
   const [activeRoute, setActiveRoute] = useState<keyof RootStackParamList>('Home');
 
@@ -65,6 +66,7 @@ function MainNavigator({ selectedUser }: MainNavigatorProps) {
             {({ navigation }) => (
               <HomeScreen
                 selectedUser={selectedUser}
+                onBackToUsers={onBackToUsers}
                 onOpenArea={(area) => navigation.navigate(routeForArea(area))}
               />
             )}
@@ -138,12 +140,17 @@ export default function App() {
     setFlowStep('main');
   };
 
+  const backToUserSelection = () => {
+    setSelectedUser(null);
+    setFlowStep('welcome');
+  };
+
   return (
     <SafeAreaProvider>
       <StatusBar translucent backgroundColor="transparent" style={flowStep === 'main' ? 'light' : 'light'} />
       {flowStep === 'splash' ? <SplashScreen /> : null}
       {flowStep === 'welcome' ? <WelcomeUserScreen onSelectUser={selectUser} /> : null}
-      {flowStep === 'main' ? <MainNavigator selectedUser={selectedUser} /> : null}
+      {flowStep === 'main' ? <MainNavigator selectedUser={selectedUser} onBackToUsers={backToUserSelection} /> : null}
     </SafeAreaProvider>
   );
 }

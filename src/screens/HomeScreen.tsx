@@ -1,4 +1,5 @@
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
 import { AcademicHeader } from '../components/AcademicHeader';
 import { HorizontalModuleRail } from '../components/HorizontalModuleRail';
 import { MetricsGlassStrip } from '../components/MetricsGlassStrip';
@@ -10,11 +11,21 @@ import type { AreaId, UserProfile } from '../types/navigation';
 
 type HomeScreenProps = {
   onOpenArea: (area: AreaId) => void;
+  onBackToUsers: () => void;
   selectedUser: UserProfile | null;
 };
 
-export function HomeScreen({ onOpenArea, selectedUser }: HomeScreenProps) {
+export function HomeScreen({ onBackToUsers, onOpenArea, selectedUser }: HomeScreenProps) {
   const { onRefresh, refreshing } = usePullRefresh();
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      onBackToUsers();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [onBackToUsers]);
 
   return (
     <ScrollView
@@ -30,7 +41,7 @@ export function HomeScreen({ onOpenArea, selectedUser }: HomeScreenProps) {
         />
       }
     >
-      <AcademicHeader selectedUser={selectedUser} />
+      <AcademicHeader selectedUser={selectedUser} onBackToUsers={onBackToUsers} />
 
       <MetricsGlassStrip metrics={METRICS} />
 

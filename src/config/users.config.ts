@@ -4,13 +4,13 @@ export const USERS_CONFIG: UserProfile[] = [
   {
     id: 'lucas',
     name: 'Lucas',
-    role: 'Electricidad / Imprenta / Gestion',
+    role: 'Administracion General',
     initial: 'L',
   },
   {
     id: 'fernanda',
     name: 'Fernanda',
-    role: 'Kinesiologia / Imprenta / Gestion',
+    role: 'Administracion General',
     initial: 'F',
   },
 ];
