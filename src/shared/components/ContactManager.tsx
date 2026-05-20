@@ -150,7 +150,7 @@ export function ContactManager({ config }: ContactManagerProps) {
             colors={config.colors}
           />
           <Field
-            label="Telefono"
+            label="Teléfono"
             value={form.phone}
             onChangeText={(value) => handleChange('phone', value)}
             colors={config.colors}

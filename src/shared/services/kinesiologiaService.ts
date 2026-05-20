@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { createFinancialMovement } from './financeService';
 import type {
   Appointment,
   AppointmentStatus,
@@ -8,6 +9,8 @@ import type {
   ProfessionalProfile,
   Visit,
 } from '../types/kinesiologia';
+import { calculateAgeFromBirthDate, formatProfessionalSignature } from '../utils/formatters';
+import type { PaymentMethod } from '../types/finance';
 
 type PatientRow = {
   id: string;
@@ -73,7 +76,7 @@ const PROFILE_ID = 'fernanda-main';
 
 function requireSupabase() {
   if (!supabase) {
-    throw new Error('Supabase no esta configurado. Revisa EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.');
+    throw new Error('Supabase no está configurado. Revisa EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY.');
   }
   return supabase;
 }
@@ -156,21 +159,8 @@ function visitFromRow(row: VisitRow): Visit {
   };
 }
 
-export function calculateAge(fechaNacimiento?: string) {
-  if (!fechaNacimiento) return null;
-  const birth = new Date(`${fechaNacimiento}T00:00:00`);
-  if (Number.isNaN(birth.getTime())) return null;
-
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const monthDiff = today.getMonth() - birth.getMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age -= 1;
-  return age;
-}
-
-export function buildProfessionalSignature(profile: Pick<ProfessionalProfile, 'matriculaProfesional' | 'nombreCompleto' | 'titulo'>) {
-  return `${profile.titulo} ${profile.nombreCompleto}\nM.P.: ${profile.matriculaProfesional || 'Sin matricula'}`;
-}
+export const calculateAge = calculateAgeFromBirthDate;
+export const buildProfessionalSignature = formatProfessionalSignature;
 
 export function validatePatientInput(input: PatientInput) {
   const required = [
@@ -182,7 +172,7 @@ export function validatePatientInput(input: PatientInput) {
   ];
 
   if (required.some((value) => value.trim().length < 2)) {
-    return 'Completa nombre, domicilio, motivo, afeccion y tratamiento propuesto.';
+    return 'Completa nombre, domicilio, motivo, afección y tratamiento propuesto.';
   }
 
   if (!input.fechaNacimiento.trim() && !input.usaEdadEstimada) {
@@ -190,7 +180,7 @@ export function validatePatientInput(input: PatientInput) {
   }
 
   if (input.usaEdadEstimada && Number(input.edadEstimada) <= 0) {
-    return 'Carga una edad estimada valida.';
+    return 'Carga una edad estimada válida.';
   }
 
   return null;
@@ -301,7 +291,7 @@ export async function saveClinicalHistoryEntry(input: {
 }) {
   const client = requireSupabase();
   if (!input.fechaTratamiento || input.contenido.trim().length < 2) {
-    throw new Error('Completa fecha de tratamiento y contenido clinico.');
+    throw new Error('Completa fecha de tratamiento y contenido clínico.');
   }
 
   if (input.entryId) {
@@ -389,6 +379,7 @@ export async function saveVisit(input: {
   observaciones: string;
   pagoRealizado: boolean;
   montoPagado: number;
+  paymentMethod?: PaymentMethod;
 }) {
   const client = requireSupabase();
   const timestamp = nowIso();
@@ -408,18 +399,17 @@ export async function saveVisit(input: {
   if (error) throw new Error(error.message);
 
   if (input.pagoRealizado && input.montoPagado > 0) {
-    const { error: financeError } = await client.from('financial_movements').insert({
-      id: createId('movement'),
-      module_type: 'kinesiologia',
-      source_type: 'visit',
-      source_id: visitId,
-      patient_id: input.patient.id,
+    await createFinancialMovement({
+      moduleType: 'kinesiologia',
+      sourceType: 'visit',
+      sourceId: visitId,
+      personId: input.patient.id,
       amount: input.montoPagado,
-      movement_type: 'income',
-      description: `Pago sesion - ${input.patient.nombreApellido}`,
-      payment_date: input.visitDate,
-      created_at: timestamp,
+      movementType: 'income',
+      paymentStatus: 'paid',
+      paymentMethod: input.paymentMethod ?? 'efectivo',
+      description: `Pago sesión - ${input.patient.nombreApellido}`,
+      movementDate: input.visitDate,
     });
-    if (financeError) throw new Error(financeError.message);
   }
 }

@@ -1,4 +1,4 @@
--- A-Tec - Kinesiologia/Fisioterapia
+-- A-Tec - Kinesiología/Fisioterapia
 -- Ejecutar en Supabase SQL Editor antes de usar el flujo clinico real.
 -- No contiene claves ni secretos.
 
@@ -79,22 +79,57 @@ create table if not exists public.notification_reminders (
 
 create table if not exists public.financial_movements (
   id text primary key,
-  module_type text not null,
-  source_type text not null,
+  module_type text not null
+    check (module_type in ('kinesiologia', 'electricidad', 'imprenta', 'general')),
+  source_type text not null
+    check (source_type in ('visit', 'electrical_job', 'print_order', 'quote', 'manual', 'expense', 'adjustment')),
   source_id text not null,
-  patient_id text references public.patients(id) on delete set null,
+  person_id text,
+  patient_id text,
+  movement_type text not null
+    check (movement_type in ('income', 'expense')),
+  payment_status text not null default 'paid'
+    check (payment_status in ('paid', 'pending', 'partial', 'cancelled')),
+  payment_method text not null default 'efectivo'
+    check (payment_method in ('efectivo', 'transferencia', 'mercado_pago', 'tarjeta', 'otro')),
   amount numeric(12, 2) not null,
-  movement_type text not null check (movement_type in ('income', 'expense')),
   description text not null,
-  payment_date date not null,
-  created_at timestamptz not null default now()
+  notes text,
+  movement_date date not null,
+  payment_date date,
+  created_by text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
 );
+
+-- Compatibilidad segura si la tabla financial_movements ya existía con la versión anterior.
+alter table public.financial_movements add column if not exists person_id text;
+alter table public.financial_movements add column if not exists patient_id text;
+alter table public.financial_movements add column if not exists payment_status text not null default 'paid';
+alter table public.financial_movements add column if not exists payment_method text not null default 'efectivo';
+alter table public.financial_movements add column if not exists notes text;
+alter table public.financial_movements add column if not exists movement_date date;
+alter table public.financial_movements add column if not exists payment_date date;
+alter table public.financial_movements add column if not exists created_by text;
+alter table public.financial_movements add column if not exists updated_at timestamptz not null default now();
+update public.financial_movements
+set movement_date = coalesce(movement_date, payment_date, created_at::date)
+where movement_date is null;
+update public.financial_movements
+set payment_date = coalesce(payment_date, movement_date, created_at::date)
+where payment_date is null;
 
 create index if not exists idx_patients_name on public.patients(nombre_apellido);
 create index if not exists idx_history_patient_date on public.clinical_history_entries(patient_id, fecha_tratamiento desc);
 create index if not exists idx_appointments_patient_date on public.appointments(patient_id, appointment_date, appointment_time);
 create index if not exists idx_visits_patient_created on public.visits(patient_id, created_at desc);
 create index if not exists idx_financial_source on public.financial_movements(source_type, source_id);
+create index if not exists idx_financial_module_date on public.financial_movements(module_type, movement_date desc);
+create index if not exists idx_financial_person on public.financial_movements(person_id);
+
+-- Tablas futuras previstas para finanzas avanzadas. No se implementan todavía:
+-- financial_categories, financial_accounts, financial_summaries,
+-- cash_sessions, installments, payment_receipts.
 
 insert into public.professional_profiles (
   id,
@@ -107,4 +142,3 @@ insert into public.professional_profiles (
   'Lic.',
   ''
 ) on conflict (id) do nothing;
-

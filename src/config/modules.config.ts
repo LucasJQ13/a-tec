@@ -16,10 +16,10 @@ export const MODULES_CONFIG: ModuleConfig[] = [
   },
   {
     id: 'kinesiologia',
-    title: 'Kinesiologia',
+    title: 'Kinesiología',
     description: 'Pacientes, sesiones, tratamientos y seguimiento profesional.',
     greeting: 'Bienvenida Lic. Fernanda',
-    subtitle: 'Gestion de pacientes, sesiones y tratamientos',
+    subtitle: 'Gestión de pacientes, sesiones y tratamientos',
     chip: 'Lic. Fernanda',
     icon: 'KF',
     accent: '#040833',

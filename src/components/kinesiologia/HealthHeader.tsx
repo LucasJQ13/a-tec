@@ -26,7 +26,7 @@ export function HealthHeader({ onBack }: HealthHeaderProps) {
         </View>
         <View style={styles.copy}>
           <Text style={styles.welcome}>Bienvenida Lic. Fernanda</Text>
-          <Text style={styles.subtitle}>Gestion de pacientes, sesiones y tratamientos</Text>
+          <Text style={styles.subtitle}>Gestión de pacientes, sesiones y tratamientos</Text>
         </View>
       </View>
     </View>

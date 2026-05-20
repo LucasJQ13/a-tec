@@ -13,6 +13,7 @@ import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { WelcomeUserScreen } from './src/screens/WelcomeUserScreen';
+import { ToastProvider } from './src/shared/components/ToastProvider';
 import type { AreaId, MainTabId, RootStackParamList, UserProfile } from './src/types/navigation';
 
 type AppFlowStep = 'splash' | 'welcome' | 'main';
@@ -147,10 +148,12 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar translucent backgroundColor="transparent" style={flowStep === 'main' ? 'light' : 'light'} />
-      {flowStep === 'splash' ? <SplashScreen /> : null}
-      {flowStep === 'welcome' ? <WelcomeUserScreen onSelectUser={selectUser} /> : null}
-      {flowStep === 'main' ? <MainNavigator selectedUser={selectedUser} onBackToUsers={backToUserSelection} /> : null}
+      <ToastProvider>
+        <StatusBar translucent backgroundColor="transparent" style={flowStep === 'main' ? 'light' : 'light'} />
+        {flowStep === 'splash' ? <SplashScreen /> : null}
+        {flowStep === 'welcome' ? <WelcomeUserScreen onSelectUser={selectUser} /> : null}
+        {flowStep === 'main' ? <MainNavigator selectedUser={selectedUser} onBackToUsers={backToUserSelection} /> : null}
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

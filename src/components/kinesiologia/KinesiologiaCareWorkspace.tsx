@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { healthColors } from '../../constants/healthTheme';
+import { getMovementsByPerson } from '../../shared/services/financeService';
 import {
-  buildProfessionalSignature,
   calculateAge,
   getProfessionalProfile,
   listAppointments,
@@ -24,6 +24,9 @@ import type {
   ProfessionalProfile,
   Visit,
 } from '../../shared/types/kinesiologia';
+import type { FinancialMovement, PaymentMethod } from '../../shared/types/finance';
+import { useToast } from '../../shared/components/ToastProvider';
+import { formatCurrencyARS, formatDateAR, formatProfessionalSignature } from '../../shared/utils/formatters';
 
 type WorkspaceMode = 'patients' | 'history' | 'dates' | 'profile';
 
@@ -72,10 +75,12 @@ function inputFromPatient(patient: KinesiologiaPatient): PatientInput {
 }
 
 export function KinesiologiaCareWorkspace({ mode }: Props) {
+  const { showToast } = useToast();
   const [patients, setPatients] = useState<KinesiologiaPatient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [historyEntries, setHistoryEntries] = useState<ClinicalHistoryEntry[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
+  const [financialMovements, setFinancialMovements] = useState<FinancialMovement[]>([]);
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<KinesiologiaPatient | null>(null);
   const [query, setQuery] = useState('');
@@ -96,6 +101,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     observaciones: '',
     pagoRealizado: false,
     montoPagado: '',
+    paymentMethod: 'efectivo' as PaymentMethod,
   });
   const [profileForm, setProfileForm] = useState({
     nombreCompleto: 'Fernanda Canavidez',
@@ -122,7 +128,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         matriculaProfesional: loadedProfile.matriculaProfesional,
       });
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'No se pudieron cargar los datos clinicos.');
+      setError(loadError instanceof Error ? loadError.message : 'No se pudieron cargar los datos clínicos.');
     }
   }, []);
 
@@ -138,8 +144,10 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         listClinicalHistoryEntries(patient.id),
         listVisits(patient.id),
       ]);
+      const loadedMovements = await getMovementsByPerson(patient.id);
       setHistoryEntries(loadedHistory);
       setVisits(loadedVisits);
+      setFinancialMovements(loadedMovements);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar la ficha del paciente.');
     }
@@ -182,6 +190,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
       observaciones: '',
       pagoRealizado: false,
       montoPagado: '',
+      paymentMethod: 'efectivo',
     });
   };
 
@@ -191,9 +200,9 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
       await savePatient(patientForm, editingPatientId);
       await loadBaseData();
       beginCreatePatient();
-      Alert.alert('Paciente guardado', 'La ficha quedo sincronizada en Supabase.');
+      showToast(editingPatientId ? 'Paciente actualizado' : 'Paciente guardado', 'success');
     } catch (saveError) {
-      Alert.alert('No se pudo guardar', saveError instanceof Error ? saveError.message : 'Error desconocido.');
+      showToast(saveError instanceof Error ? saveError.message : 'Error al guardar paciente', 'error');
     } finally {
       setSaving(false);
     }
@@ -211,9 +220,9 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
       });
       setHistoryForm({ id: '', fecha: todayDate(), contenido: '' });
       await loadPatientDetails(selectedPatient);
-      Alert.alert('Historia guardada', 'La entrada clinica quedo vinculada al paciente.');
+      showToast(historyForm.id ? 'Historia clínica actualizada' : 'Historia clínica guardada', 'success');
     } catch (saveError) {
-      Alert.alert('No se pudo guardar', saveError instanceof Error ? saveError.message : 'Error desconocido.');
+      showToast(saveError instanceof Error ? saveError.message : 'Error al guardar historia clínica', 'error');
     } finally {
       setSaving(false);
     }
@@ -232,9 +241,9 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
       });
       setAppointmentForm({ date: todayDate(), time: currentTime(), notes: '', status: 'programada' });
       await loadBaseData();
-      Alert.alert('Agenda actualizada', 'La visita programada ya aparece en Fechas.');
+      showToast('Visita agendada', 'success');
     } catch (saveError) {
-      Alert.alert('No se pudo agendar', saveError instanceof Error ? saveError.message : 'Error desconocido.');
+      showToast(saveError instanceof Error ? saveError.message : 'Error al agendar visita', 'error');
     } finally {
       setSaving(false);
     }
@@ -265,6 +274,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         observaciones: visitForm.observaciones,
         pagoRealizado: visitForm.pagoRealizado,
         montoPagado: Number(visitForm.montoPagado || 0),
+        paymentMethod: visitForm.paymentMethod,
       });
       setVisitForm({
         active: false,
@@ -274,11 +284,12 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         observaciones: '',
         pagoRealizado: false,
         montoPagado: '',
+        paymentMethod: 'efectivo',
       });
       await loadPatientDetails(selectedPatient);
-      Alert.alert('Visita finalizada', `Duracion calculada: ${duration} minutos.`);
+      showToast(visitForm.pagoRealizado ? 'Sesión finalizada y cobro realizado' : 'Sesión finalizada', 'success');
     } catch (saveError) {
-      Alert.alert('No se pudo cerrar la visita', saveError instanceof Error ? saveError.message : 'Error desconocido.');
+      showToast(saveError instanceof Error ? saveError.message : 'Error al registrar pago', 'error');
     } finally {
       setSaving(false);
     }
@@ -289,9 +300,9 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     try {
       await saveProfessionalProfile(profileForm);
       await loadBaseData();
-      Alert.alert('Perfil guardado', 'La firma profesional se usara en nuevas historias clinicas.');
+      showToast('Cambios realizados', 'success');
     } catch (saveError) {
-      Alert.alert('No se pudo guardar perfil', saveError instanceof Error ? saveError.message : 'Error desconocido.');
+      showToast(saveError instanceof Error ? saveError.message : 'Error al guardar perfil', 'error');
     } finally {
       setSaving(false);
     }
@@ -300,21 +311,21 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   if (mode === 'profile') {
     return (
       <View style={styles.wrapper}>
-        <SectionHeader title="Perfil profesional" meta="Firma clinica" />
-        <Field label="Titulo" value={profileForm.titulo} onChangeText={(titulo) => setProfileForm((current) => ({ ...current, titulo }))} />
+        <SectionHeader title="Perfil profesional" meta="Firma clínica" />
+        <Field label="Título" value={profileForm.titulo} onChangeText={(titulo) => setProfileForm((current) => ({ ...current, titulo }))} />
         <Field
           label="Nombre completo"
           value={profileForm.nombreCompleto}
           onChangeText={(nombreCompleto) => setProfileForm((current) => ({ ...current, nombreCompleto }))}
         />
         <Field
-          label="Matricula profesional M.P."
+          label="Matrícula profesional M.P."
           value={profileForm.matriculaProfesional}
           onChangeText={(matriculaProfesional) => setProfileForm((current) => ({ ...current, matriculaProfesional }))}
         />
         <View style={styles.signatureCard}>
           <Text style={styles.signatureLabel}>Firma generada</Text>
-          <Text style={styles.signatureText}>{buildProfessionalSignature(profileForm)}</Text>
+          <Text style={styles.signatureText}>{formatProfessionalSignature(profileForm)}</Text>
         </View>
         <PrimaryButton label={saving ? 'Guardando' : 'Guardar perfil'} onPress={persistProfile} />
       </View>
@@ -325,14 +336,14 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     <View style={styles.wrapper}>
       {error ? (
         <View style={styles.errorBox}>
-          <Text style={styles.errorTitle}>Revision necesaria</Text>
+          <Text style={styles.errorTitle}>Revisión necesaria</Text>
           <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : null}
 
       <SectionHeader
-        title={mode === 'history' ? 'Historias clinicas' : mode === 'dates' ? 'Fechas y agenda' : 'Pacientes'}
-        meta={mode === 'patients' ? 'Ficha clinica' : 'Supabase'}
+        title={mode === 'history' ? 'Historias clínicas' : mode === 'dates' ? 'Fechas y agenda' : 'Pacientes'}
+        meta={mode === 'patients' ? 'Ficha clínica' : 'Supabase'}
       />
 
       <PatientPicker
@@ -358,7 +369,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         <View style={styles.patientPanel}>
           <Text style={styles.panelTitle}>{selectedPatient.nombreApellido}</Text>
           <Text style={styles.panelMeta}>
-            Edad: {selectedPatient.fechaNacimiento ? calculateAge(selectedPatient.fechaNacimiento) : selectedPatient.edadEstimada} anos
+            Edad: {selectedPatient.fechaNacimiento ? calculateAge(selectedPatient.fechaNacimiento) : selectedPatient.edadEstimada} años
           </Text>
           <Text style={styles.panelText}>{selectedPatient.motivoConsulta}</Text>
 
@@ -388,6 +399,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
           {mode === 'patients' ? (
             <VisitPanel
               form={visitForm}
+              financialMovements={financialMovements}
               visits={visits}
               onChange={setVisitForm}
               onFinish={finishVisit}
@@ -399,7 +411,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
       ) : (
         <View style={styles.emptyCard}>
           <Text style={styles.emptyTitle}>Selecciona un paciente</Text>
-          <Text style={styles.emptyText}>Desde aca se accede a historia clinica, agenda y visitas.</Text>
+          <Text style={styles.emptyText}>Desde acá se accede a historia clínica, agenda, visitas y pagos vinculados.</Text>
         </View>
       )}
     </View>
@@ -486,7 +498,7 @@ function PatientForm({
         multiline
       />
       <Field
-        label="Afeccion / patologia"
+        label="Afección / patología"
         value={form.afeccionPatologia}
         onChangeText={(afeccionPatologia) => onChange({ ...form, afeccionPatologia })}
         multiline
@@ -498,11 +510,11 @@ function PatientForm({
         multiline
       />
       <Field
-        label="Fecha nacimiento YYYY-MM-DD"
+        label="Fecha nacimiento AAAA-MM-DD"
         value={form.fechaNacimiento}
         onChangeText={(fechaNacimiento) => onChange({ ...form, fechaNacimiento, usaEdadEstimada: false })}
       />
-      {automaticAge !== null ? <Text style={styles.helperText}>Edad calculada automaticamente: {automaticAge} anos</Text> : null}
+      {automaticAge !== null ? <Text style={styles.helperText}>Edad calculada automáticamente: {automaticAge} años</Text> : null}
       <TouchableOpacity
         activeOpacity={0.82}
         onPress={() => onChange({ ...form, usaEdadEstimada: !form.usaEdadEstimada, fechaNacimiento: '' })}
@@ -535,7 +547,7 @@ function HistoryPanel({
 }) {
   return (
     <View style={styles.subPanel}>
-      <Text style={styles.subTitle}>Historia clinica</Text>
+      <Text style={styles.subTitle}>Historia clínica</Text>
       <Field label="Fecha tratamiento" value={form.fecha} onChangeText={(fecha) => onChange({ ...form, fecha })} />
       <Field label="Contenido libre" value={form.contenido} onChangeText={(contenido) => onChange({ ...form, contenido })} multiline tall />
       <PrimaryButton label={saving ? 'Guardando' : form.id ? 'Actualizar entrada' : 'Guardar entrada'} onPress={onSave} />
@@ -601,6 +613,7 @@ function AppointmentPanel({
 }
 
 function VisitPanel({
+  financialMovements,
   form,
   onChange,
   onFinish,
@@ -608,6 +621,7 @@ function VisitPanel({
   saving,
   visits,
 }: {
+  financialMovements: FinancialMovement[];
   form: {
     active: boolean;
     visitDate: string;
@@ -616,6 +630,7 @@ function VisitPanel({
     observaciones: string;
     pagoRealizado: boolean;
     montoPagado: string;
+    paymentMethod: PaymentMethod;
   };
   onChange: (form: {
     active: boolean;
@@ -625,6 +640,7 @@ function VisitPanel({
     observaciones: string;
     pagoRealizado: boolean;
     montoPagado: string;
+    paymentMethod: PaymentMethod;
   }) => void;
   onFinish: () => void;
   onStart: () => void;
@@ -638,7 +654,7 @@ function VisitPanel({
         <PrimaryButton label="Iniciar visita" onPress={onStart} />
       ) : (
         <>
-          <Text style={styles.helperText}>Inicio automatico: {form.visitDate} {form.start}</Text>
+          <Text style={styles.helperText}>Inicio automático: {formatDateAR(form.visitDate)} {form.start}</Text>
           <Field label="Observaciones" value={form.observaciones} onChangeText={(observaciones) => onChange({ ...form, observaciones })} multiline />
           <TouchableOpacity
             activeOpacity={0.82}
@@ -648,19 +664,48 @@ function VisitPanel({
             <Text style={[styles.toggleText, form.pagoRealizado ? styles.activeToggleText : null]}>Pago realizado</Text>
           </TouchableOpacity>
           {form.pagoRealizado ? (
-            <Field label="Monto pagado" value={form.montoPagado} onChangeText={(montoPagado) => onChange({ ...form, montoPagado })} />
+            <>
+              <Field label="Monto pagado" value={form.montoPagado} onChangeText={(montoPagado) => onChange({ ...form, montoPagado })} />
+              <View style={styles.statusWrap}>
+                {(['efectivo', 'transferencia', 'mercado_pago', 'tarjeta', 'otro'] as PaymentMethod[]).map((method) => (
+                  <TouchableOpacity
+                    key={method}
+                    activeOpacity={0.82}
+                    onPress={() => onChange({ ...form, paymentMethod: method })}
+                    style={[styles.statusPill, form.paymentMethod === method ? styles.activeStatus : null]}
+                  >
+                    <Text style={[styles.statusText, form.paymentMethod === method ? styles.activeStatusText : null]}>
+                      {method.replace('_', ' ')}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
           ) : null}
           <PrimaryButton label={saving ? 'Guardando' : 'Finalizar visita'} onPress={onFinish} />
         </>
       )}
       {visits.map((visit) => (
         <View key={visit.id} style={styles.recordCard}>
-          <Text style={styles.recordDate}>{visit.visitDate} | {visit.horaInicio} - {visit.horaFin}</Text>
-          <Text style={styles.recordText}>Duracion: {visit.duracionMinutos} minutos</Text>
+          <Text style={styles.recordDate}>{formatDateAR(visit.visitDate)} | {visit.horaInicio} - {visit.horaFin}</Text>
+          <Text style={styles.recordText}>Duración: {visit.duracionMinutos} minutos</Text>
           <Text style={styles.recordText}>{visit.observaciones || 'Sin observaciones'}</Text>
-          {visit.pagoRealizado ? <Text style={styles.backupText}>Pago: ${visit.montoPagado}</Text> : null}
+          {visit.pagoRealizado ? <Text style={styles.backupText}>Pago: {formatCurrencyARS(visit.montoPagado)}</Text> : null}
         </View>
       ))}
+      <View style={styles.subPanel}>
+        <Text style={styles.subTitle}>Pagos vinculados</Text>
+        {financialMovements.length === 0 ? (
+          <Text style={styles.recordText}>Sin movimientos financieros vinculados.</Text>
+        ) : null}
+        {financialMovements.map((movement) => (
+          <View key={movement.id} style={styles.recordCard}>
+            <Text style={styles.recordDate}>{formatDateAR(movement.movementDate)} | {movement.paymentMethod}</Text>
+            <Text style={styles.recordText}>{movement.description}</Text>
+            <Text style={styles.backupText}>{formatCurrencyARS(movement.amount)} | {movement.paymentStatus}</Text>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }

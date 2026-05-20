@@ -4,7 +4,7 @@ Este bloque sincroniza la entidad generica `contacts`.
 
 Visualmente se muestra como:
 
-- Kinesiologia: Pacientes
+- Kinesiología: Pacientes
 - Electricidad: Clientes
 - Imprenta: Clientes
 
@@ -36,7 +36,7 @@ public.contacts
 
 ## Seguridad de esta etapa
 
-Como todavia no hay login, las politicas RLS permiten lectura, alta y edicion con la publishable key.
+Como todavía no hay login, las políticas RLS permiten lectura, alta y edición con la publishable key.
 Esto sirve para un MVP familiar controlado.
 
 Cuando se agregue login para Lucas y Fernanda, estas politicas deben reemplazarse por reglas basadas en usuarios autenticados.

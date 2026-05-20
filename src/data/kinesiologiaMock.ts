@@ -48,6 +48,6 @@ export const availableTimes = [
 export const profileSpecialties = [
   'Rehabilitacion funcional',
   'Terapia manual',
-  'Kinesiologia deportiva',
+  'Kinesiología deportiva',
   'Tratamientos posturales',
 ];

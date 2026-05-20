@@ -20,7 +20,7 @@ export function WelcomeUserScreen({ onSelectUser }: WelcomeUserScreenProps) {
       <View style={styles.header}>
         <Text style={styles.brand}>A-Tec</Text>
         <Text style={styles.title}>Bienvenidos, como trabajamos hoy?</Text>
-        <Text style={styles.subtitle}>Elegir usuario para iniciar una sesion familiar de gestion.</Text>
+        <Text style={styles.subtitle}>Elegir usuario para iniciar una sesión familiar de gestión.</Text>
       </View>
 
       <View style={styles.users}>
