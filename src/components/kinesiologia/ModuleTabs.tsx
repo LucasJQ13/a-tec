@@ -1,7 +1,7 @@
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { healthColors } from '../../constants/healthTheme';
 
-export type KinesiologyTab = 'patients' | 'services' | 'dates' | 'profile';
+export type KinesiologyTab = 'patients' | 'history' | 'dates' | 'profile';
 
 type ModuleTabsProps = {
   activeTab: KinesiologyTab;
@@ -10,7 +10,7 @@ type ModuleTabsProps = {
 
 const tabs: Array<{ id: KinesiologyTab; label: string }> = [
   { id: 'patients', label: 'Pacientes' },
-  { id: 'services', label: 'Servicios' },
+  { id: 'history', label: 'Historias' },
   { id: 'dates', label: 'Fechas' },
   { id: 'profile', label: 'Perfil' },
 ];
@@ -23,7 +23,7 @@ export function ModuleTabs({ activeTab, onChangeTab }: ModuleTabsProps) {
 
         return (
           <TouchableOpacity key={tab.id} activeOpacity={0.8} onPress={() => onChangeTab(tab.id)} style={styles.tab}>
-            <Text style={[styles.label, isActive ? styles.activeLabel : null]}>{tab.label}</Text>
+            <Text style={[styles.label, isActive ? styles.activeLabel : null]} numberOfLines={1}>{tab.label}</Text>
             <View style={[styles.indicator, isActive ? styles.activeIndicator : null]} />
           </TouchableOpacity>
         );
