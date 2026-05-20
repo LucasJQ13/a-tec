@@ -98,6 +98,19 @@ export async function getMovementsByModule(moduleType: FinanceModuleType) {
   return (data ?? []).map((row) => movementFromRow(row as FinancialMovementRow));
 }
 
+export async function listFinancialMovements(moduleType?: FinanceModuleType) {
+  const client = requireSupabase();
+  let query = client
+    .from('financial_movements')
+    .select('*')
+    .order('movement_date', { ascending: false })
+    .limit(40);
+  if (moduleType) query = query.eq('module_type', moduleType);
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => movementFromRow(row as FinancialMovementRow));
+}
+
 export async function getMovementsByPerson(personId: string) {
   const client = requireSupabase();
   const { data, error } = await client

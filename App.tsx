@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FloatingDockNav } from './src/components/FloatingDockNav';
 import { homeColors } from './src/config/theme.config';
 import { ElectricidadScreen } from './src/screens/ElectricidadScreen';
+import { FinanceScreen } from './src/screens/FinanceScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ImprentaScreen } from './src/screens/ImprentaScreen';
 import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
@@ -90,12 +91,7 @@ function MainNavigator({ onBackToUsers, selectedUser }: MainNavigatorProps) {
             )}
           </Stack.Screen>
           <Stack.Screen name="Reports">
-            {() => (
-              <PlaceholderScreen
-                title="Reportes"
-                subtitle="Resumenes simples y metricas visuales se sumaran despues de los modulos base."
-              />
-            )}
+            {() => <FinanceScreen />}
           </Stack.Screen>
           <Stack.Screen name="Settings">
             {() => (
