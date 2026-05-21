@@ -36,8 +36,8 @@ export function HealthHeader({ onBack }: HealthHeaderProps) {
 const styles = StyleSheet.create({
   header: {
     backgroundColor: healthColors.night,
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
     paddingBottom: 26,
     paddingHorizontal: 20,
   },
@@ -49,7 +49,7 @@ const styles = StyleSheet.create({
   backButton: {
     backgroundColor: healthColors.night,
     borderColor: healthColors.cream,
-    borderRadius: 10,
+    borderRadius: 6,
     borderWidth: 1,
     alignItems: 'center',
     height: 40,
@@ -81,8 +81,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: healthColors.cream,
     borderColor: healthColors.cream,
-    borderRadius: 34,
-    borderWidth: 4,
+    borderRadius: 8,
+    borderWidth: 2,
     height: 68,
     justifyContent: 'center',
     width: 68,

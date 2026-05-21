@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { BackHandler, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { BackHandler, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { healthColors } from '../../constants/healthTheme';
 import { getMovementsByPerson } from '../../shared/services/financeService';
 import {
@@ -808,7 +808,11 @@ function ClinicalHistoryFormScreen({
 }) {
   return (
     <ScreenShell title={form.id ? 'Editar historia clínica' : 'Nueva historia clínica'} subtitle={patient.nombreApellido} onBack={onBack}>
-      <CalendarPicker value={form.fechaTratamiento} onChange={(fechaTratamiento) => onChange({ ...form, fechaTratamiento })} />
+      <DateSelector
+        label="Fecha de tratamiento"
+        value={form.fechaTratamiento}
+        onChange={(fechaTratamiento) => onChange({ ...form, fechaTratamiento })}
+      />
       <Field
         label="Observaciones"
         value={form.contenido}
@@ -840,10 +844,12 @@ function AppointmentScreen({
 }) {
   return (
     <ScreenShell title="Agendar visita" subtitle={patient.nombreApellido} onBack={onBack}>
-      <CalendarPicker value={form.date} onChange={(date) => onChange({ ...form, date })} />
-      <Text style={styles.subTitle}>Horario</Text>
-      <OptionGrid options={hours} value={form.hour} onChange={(hour) => onChange({ ...form, hour })} />
-      <OptionGrid options={minutes} value={form.minute} onChange={(minute) => onChange({ ...form, minute })} />
+      <DateSelector label="Fecha" value={form.date} onChange={(date) => onChange({ ...form, date })} />
+      <TimeSelector
+        hour={form.hour}
+        minute={form.minute}
+        onChange={(hour, minute) => onChange({ ...form, hour, minute })}
+      />
       <Field label="Notas opcionales" value={form.notes} onChangeText={(notes) => onChange({ ...form, notes })} multiline />
       <PrimaryButton label={saving ? 'Guardando' : 'Agendar visita'} onPress={onSave} />
       <SummaryList
@@ -959,6 +965,99 @@ function ProfileEditor({
         <PrimaryButton label={saving ? 'Guardando' : 'Guardar perfil'} onPress={onSave} />
       </View>
     </ScreenShell>
+  );
+}
+
+function DateSelector({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View style={styles.selectorBlock}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TouchableOpacity activeOpacity={0.84} onPress={() => setOpen((current) => !current)} style={styles.selectorButton}>
+        <View>
+          <Text style={styles.selectorValue}>{formatDateAR(value)}</Text>
+          <Text style={styles.selectorHint}>{open ? 'Cerrar calendario' : 'Tocar para elegir fecha'}</Text>
+        </View>
+        <Text style={styles.selectorIcon}>{open ? '⌃' : '⌄'}</Text>
+      </TouchableOpacity>
+      {open ? (
+        <CalendarPicker
+          value={value}
+          onChange={(nextValue) => {
+            onChange(nextValue);
+            setOpen(false);
+          }}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function TimeSelector({
+  hour,
+  minute,
+  onChange,
+}: {
+  hour: string;
+  minute: string;
+  onChange: (hour: string, minute: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <View style={styles.selectorBlock}>
+      <Text style={styles.fieldLabel}>Hora</Text>
+      <TouchableOpacity activeOpacity={0.84} onPress={() => setOpen((current) => !current)} style={styles.selectorButton}>
+        <View>
+          <Text style={styles.selectorValue}>{hour}:{minute}</Text>
+          <Text style={styles.selectorHint}>{open ? 'Cerrar selector' : 'Tocar para elegir horario'}</Text>
+        </View>
+        <Text style={styles.selectorIcon}>{open ? '⌃' : '⌄'}</Text>
+      </TouchableOpacity>
+      {open ? (
+        <View style={styles.timePickerCard}>
+          <View style={styles.timeColumns}>
+            <PickerColumn title="Hora" options={hours} value={hour} onChange={(nextHour) => onChange(nextHour, minute)} />
+            <PickerColumn title="Minutos" options={minutes} value={minute} onChange={(nextMinute) => onChange(hour, nextMinute)} />
+          </View>
+          <SmallAction label="Listo" onPress={() => setOpen(false)} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function PickerColumn({
+  onChange,
+  options,
+  title,
+  value,
+}: {
+  onChange: (value: string) => void;
+  options: string[];
+  title: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.pickerColumn}>
+      <Text style={styles.pickerTitle}>{title}</Text>
+      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} style={styles.pickerScroll}>
+        {options.map((option) => {
+          const active = option === value;
+          return (
+            <TouchableOpacity
+              key={option}
+              activeOpacity={0.82}
+              onPress={() => onChange(option)}
+              style={[styles.pickerRow, active ? styles.activePickerRow : null]}
+            >
+              <Text style={[styles.pickerRowText, active ? styles.activePickerRowText : null]}>{option}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -1154,10 +1253,10 @@ const styles = StyleSheet.create({
   screenShell: {
     backgroundColor: healthColors.cream,
     borderColor: healthColors.creamDeep,
-    borderRadius: 16,
+    borderRadius: 8,
     borderWidth: 1,
     gap: 14,
-    padding: 14,
+    padding: 16,
   },
   shellHeader: {
     alignItems: 'center',
@@ -1167,7 +1266,7 @@ const styles = StyleSheet.create({
   backButton: {
     alignItems: 'center',
     backgroundColor: healthColors.night,
-    borderRadius: 10,
+    borderRadius: 6,
     height: 42,
     justifyContent: 'center',
     width: 42,
@@ -1201,7 +1300,7 @@ const styles = StyleSheet.create({
   errorBox: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.burgundy,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 14,
   },
@@ -1229,7 +1328,7 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
     color: healthColors.night,
     fontSize: 14,
@@ -1251,7 +1350,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 12,
@@ -1260,7 +1359,7 @@ const styles = StyleSheet.create({
   patientInitial: {
     alignItems: 'center',
     backgroundColor: healthColors.night,
-    borderRadius: 12,
+    borderRadius: 6,
     height: 48,
     justifyContent: 'center',
     width: 48,
@@ -1306,14 +1405,14 @@ const styles = StyleSheet.create({
   formCard: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 14,
   },
   infoCard: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 14,
   },
@@ -1344,7 +1443,7 @@ const styles = StyleSheet.create({
   },
   toggleRow: {
     borderColor: healthColors.night,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
     marginTop: 12,
     padding: 12,
@@ -1363,7 +1462,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     alignItems: 'center',
     backgroundColor: healthColors.night,
-    borderRadius: 12,
+    borderRadius: 6,
     justifyContent: 'center',
     marginTop: 14,
     minHeight: 48,
@@ -1377,7 +1476,7 @@ const styles = StyleSheet.create({
   smallAction: {
     alignItems: 'center',
     backgroundColor: healthColors.night,
-    borderRadius: 12,
+    borderRadius: 6,
     justifyContent: 'center',
     minHeight: 40,
     paddingHorizontal: 14,
@@ -1390,7 +1489,7 @@ const styles = StyleSheet.create({
   secondaryButton: {
     alignItems: 'center',
     borderColor: healthColors.night,
-    borderRadius: 12,
+    borderRadius: 6,
     borderWidth: 1,
     justifyContent: 'center',
     minHeight: 44,
@@ -1405,7 +1504,7 @@ const styles = StyleSheet.create({
   summaryCard: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     gap: 8,
     padding: 14,
@@ -1428,7 +1527,7 @@ const styles = StyleSheet.create({
   recordCard: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 12,
   },
@@ -1463,7 +1562,7 @@ const styles = StyleSheet.create({
   signatureCard: {
     backgroundColor: healthColors.cream,
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     marginTop: 14,
     padding: 14,
@@ -1485,10 +1584,89 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
   },
+  selectorBlock: {
+    marginTop: 8,
+  },
+  selectorButton: {
+    alignItems: 'center',
+    backgroundColor: healthColors.creamSoft,
+    borderColor: healthColors.creamDeep,
+    borderRadius: 6,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 54,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  selectorValue: {
+    color: healthColors.night,
+    fontSize: 15,
+    fontWeight: '900',
+    lineHeight: 20,
+  },
+  selectorHint: {
+    color: healthColors.olive,
+    fontSize: 11,
+    fontWeight: '800',
+    lineHeight: 15,
+    marginTop: 2,
+  },
+  selectorIcon: {
+    color: healthColors.night,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  timePickerCard: {
+    backgroundColor: healthColors.creamSoft,
+    borderColor: healthColors.creamDeep,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: 12,
+    marginTop: 8,
+    padding: 12,
+  },
+  timeColumns: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  pickerColumn: {
+    flex: 1,
+    minWidth: 0,
+  },
+  pickerTitle: {
+    color: healthColors.olive,
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  pickerScroll: {
+    borderColor: healthColors.creamDeep,
+    borderRadius: 6,
+    borderWidth: 1,
+    maxHeight: 152,
+  },
+  pickerRow: {
+    alignItems: 'center',
+    minHeight: 38,
+    justifyContent: 'center',
+  },
+  activePickerRow: {
+    backgroundColor: healthColors.night,
+  },
+  pickerRowText: {
+    color: healthColors.night,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  activePickerRowText: {
+    color: healthColors.cream,
+  },
   calendarCard: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderWidth: 1,
     padding: 12,
   },
@@ -1500,7 +1678,7 @@ const styles = StyleSheet.create({
   calendarNav: {
     alignItems: 'center',
     borderColor: healthColors.night,
-    borderRadius: 10,
+    borderRadius: 6,
     borderWidth: 1,
     height: 36,
     justifyContent: 'center',
@@ -1543,7 +1721,7 @@ const styles = StyleSheet.create({
   },
   activeDayCell: {
     backgroundColor: healthColors.night,
-    borderRadius: 10,
+    borderRadius: 4,
   },
   dayText: {
     color: healthColors.night,
@@ -1561,7 +1739,7 @@ const styles = StyleSheet.create({
   },
   optionPill: {
     borderColor: healthColors.night,
-    borderRadius: 10,
+    borderRadius: 6,
     borderWidth: 1,
     minWidth: 44,
     paddingHorizontal: 10,
@@ -1582,7 +1760,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     borderColor: healthColors.creamDeep,
-    borderRadius: 14,
+    borderRadius: 8,
     borderStyle: 'dashed',
     borderWidth: 1,
     padding: 16,
