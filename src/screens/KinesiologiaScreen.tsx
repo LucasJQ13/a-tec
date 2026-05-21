@@ -14,11 +14,13 @@ type KinesiologiaScreenProps = {
 
 export function KinesiologiaScreen({ onBack }: KinesiologiaScreenProps) {
   const [activeTab, setActiveTab] = useState<KinesiologyTab>('patients');
+  const [workspaceFullScreen, setWorkspaceFullScreen] = useState(false);
   const tabHistory = useRef<KinesiologyTab[]>(['patients']);
   const { onRefresh, refreshing } = usePullRefresh();
   const insets = useSafeAreaInsets();
 
   const changeTab = (tab: KinesiologyTab) => {
+    setWorkspaceFullScreen(false);
     setActiveTab(tab);
     tabHistory.current = [...tabHistory.current, tab].slice(-8);
   };
@@ -53,47 +55,47 @@ export function KinesiologiaScreen({ onBack }: KinesiologiaScreenProps) {
           />
         }
       >
-        <HealthHeader onBack={onBack} />
-        <ModuleTabs activeTab={activeTab} onChangeTab={changeTab} />
+        {!workspaceFullScreen ? <HealthHeader onBack={onBack} /> : null}
+        {!workspaceFullScreen ? <ModuleTabs activeTab={activeTab} onChangeTab={changeTab} /> : null}
 
-        {activeTab === 'patients' ? <PatientsTab /> : null}
-        {activeTab === 'history' ? <HistoryTab /> : null}
-        {activeTab === 'dates' ? <DatesTab /> : null}
-        {activeTab === 'profile' ? <ProfileTab /> : null}
+        {activeTab === 'patients' ? <PatientsTab onFullScreenChange={setWorkspaceFullScreen} /> : null}
+        {activeTab === 'history' ? <HistoryTab onFullScreenChange={setWorkspaceFullScreen} /> : null}
+        {activeTab === 'dates' ? <DatesTab onFullScreenChange={setWorkspaceFullScreen} /> : null}
+        {activeTab === 'profile' ? <ProfileTab onFullScreenChange={setWorkspaceFullScreen} /> : null}
       </ScrollView>
       <HealthBottomNav />
     </View>
   );
 }
 
-function PatientsTab() {
+function PatientsTab({ onFullScreenChange }: { onFullScreenChange: (active: boolean) => void }) {
   return (
     <View style={styles.tabContent}>
-      <KinesiologiaCareWorkspace mode="patients" />
+      <KinesiologiaCareWorkspace mode="patients" onFullScreenChange={onFullScreenChange} />
     </View>
   );
 }
 
-function HistoryTab() {
+function HistoryTab({ onFullScreenChange }: { onFullScreenChange: (active: boolean) => void }) {
   return (
     <View style={styles.tabContent}>
-      <KinesiologiaCareWorkspace mode="history" />
+      <KinesiologiaCareWorkspace mode="history" onFullScreenChange={onFullScreenChange} />
     </View>
   );
 }
 
-function DatesTab() {
+function DatesTab({ onFullScreenChange }: { onFullScreenChange: (active: boolean) => void }) {
   return (
     <View style={styles.tabContent}>
-      <KinesiologiaCareWorkspace mode="dates" />
+      <KinesiologiaCareWorkspace mode="dates" onFullScreenChange={onFullScreenChange} />
     </View>
   );
 }
 
-function ProfileTab() {
+function ProfileTab({ onFullScreenChange }: { onFullScreenChange: (active: boolean) => void }) {
   return (
     <View style={styles.tabContent}>
-      <KinesiologiaCareWorkspace mode="profile" />
+      <KinesiologiaCareWorkspace mode="profile" onFullScreenChange={onFullScreenChange} />
     </View>
   );
 }

@@ -31,6 +31,8 @@ export type ProfessionalProfile = {
   nombreCompleto: string;
   titulo: string;
   matriculaProfesional: string;
+  especialidad?: string;
+  horariosAtencion?: string;
   createdAt: string;
   updatedAt: string;
 };

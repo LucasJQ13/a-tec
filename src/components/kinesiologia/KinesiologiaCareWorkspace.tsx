@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { BackHandler, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { healthColors } from '../../constants/healthTheme';
 import { getMovementsByPerson } from '../../shared/services/financeService';
 import {
@@ -26,12 +26,44 @@ import type {
 } from '../../shared/types/kinesiologia';
 import type { FinancialMovement, PaymentMethod } from '../../shared/types/finance';
 import { useToast } from '../../shared/components/ToastProvider';
-import { formatCurrencyARS, formatDateAR, formatProfessionalSignature } from '../../shared/utils/formatters';
+import {
+  formatCurrencyARS,
+  formatDateAR,
+  formatDateTimeAR,
+  formatProfessionalSignature,
+  normalizeForSearch,
+} from '../../shared/utils/formatters';
 
 type WorkspaceMode = 'patients' | 'history' | 'dates' | 'profile';
+type FlowScreen = 'list' | 'detail' | 'editPatient' | 'history' | 'historyForm' | 'appointment' | 'visit';
 
 type Props = {
   mode: WorkspaceMode;
+  onFullScreenChange?: (active: boolean) => void;
+};
+
+type HistoryForm = {
+  id?: string;
+  fechaTratamiento: string;
+  contenido: string;
+};
+
+type AppointmentForm = {
+  date: string;
+  hour: string;
+  minute: string;
+  notes: string;
+  status: AppointmentStatus;
+};
+
+type VisitForm = {
+  active: boolean;
+  visitDate: string;
+  start: string;
+  observaciones: string;
+  pagoRealizado: boolean;
+  montoPagado: string;
+  paymentMethod: PaymentMethod;
 };
 
 const emptyPatient: PatientInput = {
@@ -45,14 +77,29 @@ const emptyPatient: PatientInput = {
   usaEdadEstimada: false,
 };
 
-const appointmentStatuses: AppointmentStatus[] = ['programada', 'realizada', 'cancelada', 'reprogramada'];
+const hours = Array.from({ length: 24 }, (_, index) => String(index).padStart(2, '0'));
+const minutes = Array.from({ length: 12 }, (_, index) => String(index * 5).padStart(2, '0'));
+const paymentMethods: PaymentMethod[] = ['efectivo', 'transferencia', 'mercado_pago', 'tarjeta', 'otro'];
 
-function todayDate() {
-  return new Date().toISOString().slice(0, 10);
+function todayIso() {
+  const date = new Date();
+  return toIsoDate(date);
 }
 
 function currentTime() {
   return new Date().toTimeString().slice(0, 5);
+}
+
+function toIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isoToDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
 }
 
 function minutesBetween(start: string, end: string) {
@@ -74,8 +121,28 @@ function inputFromPatient(patient: KinesiologiaPatient): PatientInput {
   };
 }
 
-export function KinesiologiaCareWorkspace({ mode }: Props) {
+function appointmentFormFromNow(): AppointmentForm {
+  const [hour, minute] = currentTime().split(':');
+  return { date: todayIso(), hour, minute, notes: '', status: 'programada' };
+}
+
+function visitFormFromNow(): VisitForm {
+  return {
+    active: false,
+    visitDate: todayIso(),
+    start: currentTime(),
+    observaciones: '',
+    pagoRealizado: false,
+    montoPagado: '',
+    paymentMethod: 'efectivo',
+  };
+}
+
+export function KinesiologiaCareWorkspace({ mode, onFullScreenChange }: Props) {
+  const { width } = useWindowDimensions();
   const { showToast } = useToast();
+  const compact = width < 380;
+  const [flow, setFlow] = useState<FlowScreen>('list');
   const [patients, setPatients] = useState<KinesiologiaPatient[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [historyEntries, setHistoryEntries] = useState<ClinicalHistoryEntry[]>([]);
@@ -84,30 +151,18 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   const [profile, setProfile] = useState<ProfessionalProfile | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<KinesiologiaPatient | null>(null);
   const [query, setQuery] = useState('');
-  const [patientFormVisible, setPatientFormVisible] = useState(false);
   const [patientForm, setPatientForm] = useState<PatientInput>(emptyPatient);
   const [editingPatientId, setEditingPatientId] = useState<string | undefined>();
-  const [historyForm, setHistoryForm] = useState({ id: '', fecha: todayDate(), contenido: '' });
-  const [appointmentForm, setAppointmentForm] = useState({
-    date: todayDate(),
-    time: currentTime(),
-    notes: '',
-    status: 'programada' as AppointmentStatus,
-  });
-  const [visitForm, setVisitForm] = useState({
-    active: false,
-    visitDate: todayDate(),
-    start: currentTime(),
-    end: '',
-    observaciones: '',
-    pagoRealizado: false,
-    montoPagado: '',
-    paymentMethod: 'efectivo' as PaymentMethod,
-  });
+  const [historyForm, setHistoryForm] = useState<HistoryForm>({ fechaTratamiento: todayIso(), contenido: '' });
+  const [expandedHistoryId, setExpandedHistoryId] = useState<string | null>(null);
+  const [appointmentForm, setAppointmentForm] = useState<AppointmentForm>(appointmentFormFromNow());
+  const [visitForm, setVisitForm] = useState<VisitForm>(visitFormFromNow());
   const [profileForm, setProfileForm] = useState({
     nombreCompleto: 'Fernanda Canavidez',
     titulo: 'Lic.',
     matriculaProfesional: '',
+    especialidad: '',
+    horariosAtencion: '',
   });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -115,10 +170,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   const loadBaseData = useCallback(async () => {
     try {
       setError(null);
-      const [loadedPatients, loadedAppointments] = await Promise.all([
-        listPatients(),
-        listAppointments(),
-      ]);
+      const [loadedPatients, loadedAppointments] = await Promise.all([listPatients(), listAppointments()]);
       setPatients(loadedPatients);
       setAppointments(loadedAppointments);
     } catch (loadError) {
@@ -134,6 +186,8 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         nombreCompleto: loadedProfile.nombreCompleto,
         titulo: loadedProfile.titulo,
         matriculaProfesional: loadedProfile.matriculaProfesional,
+        especialidad: loadedProfile.especialidad ?? '',
+        horariosAtencion: loadedProfile.horariosAtencion ?? '',
       });
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'No se pudo cargar el perfil profesional.');
@@ -144,15 +198,16 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     if (!patient) {
       setHistoryEntries([]);
       setVisits([]);
+      setFinancialMovements([]);
       return;
     }
 
     try {
-      const [loadedHistory, loadedVisits] = await Promise.all([
+      const [loadedHistory, loadedVisits, loadedMovements] = await Promise.all([
         listClinicalHistoryEntries(patient.id),
         listVisits(patient.id),
+        getMovementsByPerson(patient.id),
       ]);
-      const loadedMovements = await getMovementsByPerson(patient.id);
       setHistoryEntries(loadedHistory);
       setVisits(loadedVisits);
       setFinancialMovements(loadedMovements);
@@ -162,60 +217,101 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   }, []);
 
   useEffect(() => {
+    setFlow('list');
+    setSelectedPatient(null);
+    setQuery('');
+  }, [mode]);
+
+  useEffect(() => {
+    onFullScreenChange?.(flow !== 'list' && mode !== 'profile');
+  }, [flow, mode, onFullScreenChange]);
+
+  useEffect(() => {
     loadBaseData();
   }, [loadBaseData]);
 
   useEffect(() => {
-    if (mode === 'history' || mode === 'profile') {
-      loadProfile();
-    }
-  }, [loadProfile, mode]);
+    loadProfile();
+  }, [loadProfile]);
 
   useEffect(() => {
     loadPatientDetails(selectedPatient);
   }, [loadPatientDetails, selectedPatient]);
 
+  const goBack = useCallback(() => {
+    if (flow === 'detail' || flow === 'editPatient') {
+      setFlow('list');
+      if (flow === 'editPatient') setEditingPatientId(undefined);
+      return true;
+    }
+    if (flow === 'history' || flow === 'appointment' || flow === 'visit') {
+      setFlow(mode === 'patients' ? 'detail' : 'list');
+      return true;
+    }
+    if (flow === 'historyForm') {
+      setFlow('history');
+      return true;
+    }
+    return false;
+  }, [flow, mode]);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => goBack());
+    return () => subscription.remove();
+  }, [goBack]);
+
   const filteredPatients = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
+    const normalized = normalizeForSearch(query);
     if (!normalized) return patients;
-    return patients.filter((patient) => patient.nombreApellido.toLowerCase().includes(normalized));
+    return patients.filter((patient) => normalizeForSearch(patient.nombreApellido).includes(normalized));
   }, [patients, query]);
 
   const selectedAppointments = useMemo(() => {
-    if (!selectedPatient) return appointments;
+    if (!selectedPatient) return [];
     return appointments.filter((appointment) => appointment.patientId === selectedPatient.id);
   }, [appointments, selectedPatient]);
+
+  const upcomingAppointments = useMemo(
+    () => selectedAppointments.filter((appointment) => appointment.status === 'programada').slice(0, 3),
+    [selectedAppointments]
+  );
 
   const beginCreatePatient = () => {
     setEditingPatientId(undefined);
     setSelectedPatient(null);
     setPatientForm(emptyPatient);
-    setPatientFormVisible(true);
-  };
-
-  const selectPatient = (patient: KinesiologiaPatient) => {
-    setSelectedPatient(patient);
-    setEditingPatientId(undefined);
-    setPatientForm(emptyPatient);
-    setPatientFormVisible(false);
-    setHistoryForm({ id: '', fecha: todayDate(), contenido: '' });
-    setVisitForm({
-      active: false,
-      visitDate: todayDate(),
-      start: currentTime(),
-      end: '',
-      observaciones: '',
-      pagoRealizado: false,
-      montoPagado: '',
-      paymentMethod: 'efectivo',
-    });
+    setFlow('editPatient');
   };
 
   const beginEditPatient = (patient: KinesiologiaPatient) => {
     setSelectedPatient(patient);
     setEditingPatientId(patient.id);
     setPatientForm(inputFromPatient(patient));
-    setPatientFormVisible(true);
+    setFlow('editPatient');
+  };
+
+  const openPatient = (patient: KinesiologiaPatient) => {
+    setSelectedPatient(patient);
+    setFlow(mode === 'history' ? 'history' : mode === 'dates' ? 'appointment' : 'detail');
+  };
+
+  const openHistoryForm = (entry?: ClinicalHistoryEntry) => {
+    setHistoryForm(
+      entry
+        ? { id: entry.id, fechaTratamiento: entry.fechaTratamiento, contenido: entry.contenido }
+        : { fechaTratamiento: todayIso(), contenido: '' }
+    );
+    setFlow('historyForm');
+  };
+
+  const openAppointmentForm = () => {
+    setAppointmentForm(appointmentFormFromNow());
+    setFlow('appointment');
+  };
+
+  const openVisitForm = () => {
+    setVisitForm(visitFormFromNow());
+    setFlow('visit');
   };
 
   const persistPatient = async () => {
@@ -224,10 +320,29 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     try {
       await savePatient(patientForm, editingPatientId);
       await loadBaseData();
-      setPatientFormVisible(false);
-      setEditingPatientId(undefined);
+      const savedName = patientForm.nombreApellido;
       setPatientForm(emptyPatient);
+      setEditingPatientId(undefined);
       showToast(wasEditing ? 'Paciente actualizado' : 'Paciente guardado', 'success');
+      if (wasEditing && selectedPatient) {
+        setSelectedPatient({
+          ...selectedPatient,
+          nombreApellido: patientForm.nombreApellido,
+          domicilio: patientForm.domicilio,
+          motivoConsulta: patientForm.motivoConsulta,
+          afeccionPatologia: patientForm.afeccionPatologia,
+          tratamientoPropuesto: patientForm.tratamientoPropuesto,
+          fechaNacimiento: patientForm.fechaNacimiento,
+          edadEstimada: patientForm.edadEstimada ? Number(patientForm.edadEstimada) : undefined,
+          usaEdadEstimada: patientForm.usaEdadEstimada,
+          updatedAt: new Date().toISOString(),
+        });
+        setFlow('detail');
+      } else {
+        const created = patients.find((patient) => patient.nombreApellido === savedName);
+        if (created) setSelectedPatient(created);
+        setFlow('list');
+      }
     } catch (saveError) {
       showToast(saveError instanceof Error ? saveError.message : 'Error al guardar paciente', 'error');
     } finally {
@@ -241,13 +356,14 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
     try {
       await saveClinicalHistoryEntry({
         patientId: selectedPatient.id,
-        fechaTratamiento: historyForm.fecha,
+        fechaTratamiento: historyForm.fechaTratamiento,
         contenido: historyForm.contenido,
-        entryId: historyForm.id || undefined,
+        entryId: historyForm.id,
       });
-      setHistoryForm({ id: '', fecha: todayDate(), contenido: '' });
       await loadPatientDetails(selectedPatient);
       showToast(historyForm.id ? 'Historia clínica actualizada' : 'Historia clínica guardada', 'success');
+      setHistoryForm({ fechaTratamiento: todayIso(), contenido: '' });
+      setFlow('history');
     } catch (saveError) {
       showToast(saveError instanceof Error ? saveError.message : 'Error al guardar historia clínica', 'error');
     } finally {
@@ -262,13 +378,13 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
       await saveAppointment({
         patientId: selectedPatient.id,
         appointmentDate: appointmentForm.date,
-        appointmentTime: appointmentForm.time,
+        appointmentTime: `${appointmentForm.hour}:${appointmentForm.minute}`,
         notes: appointmentForm.notes,
         status: appointmentForm.status,
       });
-      setAppointmentForm({ date: todayDate(), time: currentTime(), notes: '', status: 'programada' });
       await loadBaseData();
       showToast('Visita agendada', 'success');
+      setFlow(mode === 'patients' ? 'detail' : 'list');
     } catch (saveError) {
       showToast(saveError instanceof Error ? saveError.message : 'Error al agendar visita', 'error');
     } finally {
@@ -277,13 +393,7 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   };
 
   const startVisit = () => {
-    setVisitForm((current) => ({
-      ...current,
-      active: true,
-      visitDate: todayDate(),
-      start: currentTime(),
-      end: '',
-    }));
+    setVisitForm({ ...visitFormFromNow(), active: true });
   };
 
   const finishVisit = async () => {
@@ -303,20 +413,12 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
         montoPagado: Number(visitForm.montoPagado || 0),
         paymentMethod: visitForm.paymentMethod,
       });
-      setVisitForm({
-        active: false,
-        visitDate: todayDate(),
-        start: currentTime(),
-        end: '',
-        observaciones: '',
-        pagoRealizado: false,
-        montoPagado: '',
-        paymentMethod: 'efectivo',
-      });
       await loadPatientDetails(selectedPatient);
       showToast(visitForm.pagoRealizado ? 'Sesión finalizada y cobro realizado' : 'Sesión finalizada', 'success');
+      setVisitForm(visitFormFromNow());
+      setFlow('detail');
     } catch (saveError) {
-      showToast(saveError instanceof Error ? saveError.message : 'Error al registrar pago', 'error');
+      showToast(saveError instanceof Error ? saveError.message : 'Error al registrar visita', 'error');
     } finally {
       setSaving(false);
     }
@@ -338,413 +440,609 @@ export function KinesiologiaCareWorkspace({ mode }: Props) {
   if (mode === 'profile') {
     return (
       <View style={styles.wrapper}>
-        <SectionHeader title="Perfil profesional" meta="Firma clínica" />
-        <Field label="Título" value={profileForm.titulo} onChangeText={(titulo) => setProfileForm((current) => ({ ...current, titulo }))} />
-        <Field
-          label="Nombre completo"
-          value={profileForm.nombreCompleto}
-          onChangeText={(nombreCompleto) => setProfileForm((current) => ({ ...current, nombreCompleto }))}
-        />
-        <Field
-          label="Matrícula profesional M.P."
-          value={profileForm.matriculaProfesional}
-          onChangeText={(matriculaProfesional) => setProfileForm((current) => ({ ...current, matriculaProfesional }))}
-        />
-        <View style={styles.signatureCard}>
-          <Text style={styles.signatureLabel}>Firma generada</Text>
-          <Text style={styles.signatureText}>{formatProfessionalSignature(profileForm)}</Text>
-        </View>
-        <PrimaryButton label={saving ? 'Guardando' : 'Guardar perfil'} onPress={persistProfile} />
+        <WorkspaceError message={error} />
+        <ProfileEditor form={profileForm} onChange={setProfileForm} onSave={persistProfile} saving={saving} />
       </View>
     );
   }
 
   return (
     <View style={styles.wrapper}>
-      {error ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorTitle}>Revisión necesaria</Text>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : null}
+      <WorkspaceError message={error} />
 
-      <SectionHeader
-        title={mode === 'history' ? 'Historias clínicas' : mode === 'dates' ? 'Fechas y agenda' : 'Pacientes'}
-        meta={mode === 'patients' ? 'Ficha clínica' : 'Supabase'}
-      />
-
-      <PatientPicker
-        patients={filteredPatients}
-        query={query}
-        selectedPatient={selectedPatient}
-        setQuery={setQuery}
-        onSelect={selectPatient}
-      />
-
-      {mode === 'patients' && !patientFormVisible ? (
-        <PrimaryButton label="Nuevo paciente" onPress={beginCreatePatient} />
-      ) : null}
-
-      {mode === 'patients' && patientFormVisible ? (
-        <PatientForm
-          form={patientForm}
-          onChange={setPatientForm}
-          onCancel={() => {
-            setPatientFormVisible(false);
-            setEditingPatientId(undefined);
-            setPatientForm(emptyPatient);
-          }}
-          onSave={persistPatient}
-          saving={saving}
-          isEditing={Boolean(editingPatientId)}
+      {flow === 'list' ? (
+        <PatientList
+          mode={mode}
+          patients={filteredPatients}
+          query={query}
+          compact={compact}
+          onCreate={mode === 'patients' ? beginCreatePatient : undefined}
+          onOpenPatient={openPatient}
+          onQuery={setQuery}
         />
       ) : null}
 
-      {selectedPatient ? (
-        <View style={styles.patientPanel}>
-          <Text style={styles.panelTitle}>{selectedPatient.nombreApellido}</Text>
-          <Text style={styles.panelMeta}>
-            Edad: {selectedPatient.fechaNacimiento ? calculateAge(selectedPatient.fechaNacimiento) : selectedPatient.edadEstimada} años
-          </Text>
-          <Text style={styles.panelText}>{selectedPatient.motivoConsulta}</Text>
+      {flow === 'detail' && selectedPatient ? (
+        <PatientDetail
+          appointments={upcomingAppointments}
+          histories={historyEntries.slice(0, 3)}
+          patient={selectedPatient}
+          onAppointment={openAppointmentForm}
+          onBack={goBack}
+          onEdit={() => beginEditPatient(selectedPatient)}
+          onHistory={() => setFlow('history')}
+          onVisit={openVisitForm}
+        />
+      ) : null}
 
-          {mode === 'patients' && !patientFormVisible ? (
-            <SecondaryButton label="Editar paciente" onPress={() => beginEditPatient(selectedPatient)} />
-          ) : null}
+      {flow === 'editPatient' ? (
+        <PatientFormScreen
+          form={patientForm}
+          isEditing={Boolean(editingPatientId)}
+          onBack={goBack}
+          onChange={setPatientForm}
+          onSave={persistPatient}
+          saving={saving}
+        />
+      ) : null}
 
-          {(mode === 'patients' || mode === 'history') ? (
-            <HistoryPanel
-              entries={historyEntries}
-              form={historyForm}
-              onChange={setHistoryForm}
-              onEdit={(entry) =>
-                setHistoryForm({ id: entry.id, fecha: entry.fechaTratamiento, contenido: entry.contenido })
-              }
-              onSave={persistHistory}
-              saving={saving}
-            />
-          ) : null}
+      {flow === 'history' && selectedPatient ? (
+        <ClinicalHistoryScreen
+          entries={historyEntries}
+          expandedId={expandedHistoryId}
+          patient={selectedPatient}
+          onBack={goBack}
+          onEdit={openHistoryForm}
+          onNew={() => openHistoryForm()}
+          onToggle={setExpandedHistoryId}
+        />
+      ) : null}
 
-          {(mode === 'patients' || mode === 'dates') ? (
-            <AppointmentPanel
-              appointments={selectedAppointments}
-              form={appointmentForm}
-              onChange={setAppointmentForm}
-              onSave={persistAppointment}
-              saving={saving}
-            />
-          ) : null}
+      {flow === 'historyForm' && selectedPatient ? (
+        <ClinicalHistoryFormScreen
+          form={historyForm}
+          patient={selectedPatient}
+          saving={saving}
+          onBack={goBack}
+          onChange={setHistoryForm}
+          onSave={persistHistory}
+        />
+      ) : null}
 
-          {mode === 'patients' ? (
-            <VisitPanel
-              form={visitForm}
-              financialMovements={financialMovements}
-              visits={visits}
-              onChange={setVisitForm}
-              onFinish={finishVisit}
-              onStart={startVisit}
-              saving={saving}
-            />
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.emptyCard}>
-          <Text style={styles.emptyTitle}>Selecciona un paciente</Text>
-          <Text style={styles.emptyText}>Desde acá se accede a historia clínica, agenda, visitas y pagos vinculados.</Text>
-        </View>
-      )}
+      {flow === 'appointment' && selectedPatient ? (
+        <AppointmentScreen
+          appointments={selectedAppointments}
+          form={appointmentForm}
+          patient={selectedPatient}
+          saving={saving}
+          onBack={goBack}
+          onChange={setAppointmentForm}
+          onSave={persistAppointment}
+        />
+      ) : null}
+
+      {flow === 'visit' && selectedPatient ? (
+        <VisitScreen
+          financialMovements={financialMovements}
+          form={visitForm}
+          patient={selectedPatient}
+          saving={saving}
+          visits={visits}
+          onBack={goBack}
+          onChange={setVisitForm}
+          onFinish={finishVisit}
+          onStart={startVisit}
+        />
+      ) : null}
     </View>
   );
 }
 
-function SectionHeader({ meta, title }: { meta: string; title: string }) {
+function WorkspaceError({ message }: { message: string | null }) {
+  if (!message) return null;
   return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionMeta}>{meta}</Text>
+    <View style={styles.errorBox}>
+      <Text style={styles.errorTitle}>Revisión necesaria</Text>
+      <Text style={styles.errorText}>{message}</Text>
     </View>
   );
 }
 
-function PatientPicker({
-  onSelect,
+function ScreenShell({
+  children,
+  onBack,
+  rightAction,
+  subtitle,
+  title,
+}: {
+  children: ReactNode;
+  onBack?: () => boolean;
+  rightAction?: ReactNode;
+  subtitle?: string;
+  title: string;
+}) {
+  return (
+    <View style={styles.screenShell}>
+      <View style={styles.shellHeader}>
+        {onBack ? (
+          <TouchableOpacity activeOpacity={0.82} onPress={onBack} style={styles.backButton}>
+            <Text style={styles.backIcon}>‹</Text>
+          </TouchableOpacity>
+        ) : null}
+        <View style={styles.shellTitleBlock}>
+          <Text style={styles.shellTitle} numberOfLines={2}>{title}</Text>
+          {subtitle ? <Text style={styles.shellSubtitle} numberOfLines={2}>{subtitle}</Text> : null}
+        </View>
+        {rightAction ? <View style={styles.shellAction}>{rightAction}</View> : null}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+function PatientList({
+  compact,
+  mode,
+  onCreate,
+  onOpenPatient,
+  onQuery,
   patients,
   query,
-  selectedPatient,
-  setQuery,
 }: {
-  onSelect: (patient: KinesiologiaPatient) => void;
+  compact: boolean;
+  mode: WorkspaceMode;
+  onCreate?: () => void;
+  onOpenPatient: (patient: KinesiologiaPatient) => void;
+  onQuery: (value: string) => void;
   patients: KinesiologiaPatient[];
   query: string;
-  selectedPatient: KinesiologiaPatient | null;
-  setQuery: (value: string) => void;
 }) {
-  return (
-    <View>
-      <Field label="Buscar paciente" value={query} onChangeText={setQuery} />
-      <View style={styles.patientRail}>
-        {patients.map((patient) => {
-          const active = selectedPatient?.id === patient.id;
-          return (
-            <TouchableOpacity
-              key={patient.id}
-              activeOpacity={0.84}
-              onPress={() => onSelect(patient)}
-              style={[styles.patientChip, active ? styles.activePatientChip : null]}
-            >
-              <Text style={[styles.patientChipText, active ? styles.activePatientChipText : null]} numberOfLines={1}>
-                {patient.nombreApellido}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function PatientForm({
-  form,
-  onChange,
-  onCancel,
-  onSave,
-  saving,
-  isEditing,
-}: {
-  form: PatientInput;
-  onChange: (form: PatientInput) => void;
-  onCancel: () => void;
-  onSave: () => void;
-  saving: boolean;
-  isEditing: boolean;
-}) {
-  const automaticAge = calculateAge(form.fechaNacimiento);
+  const title = mode === 'history' ? 'Historias clínicas' : mode === 'dates' ? 'Fechas y agenda' : 'Pacientes';
+  const subtitle = mode === 'patients' ? 'Sincronizado con Supabase' : 'Selecciona un paciente';
 
   return (
-    <View style={styles.formCard}>
-      <View style={styles.formHeader}>
-        <Text style={styles.formTitle}>{isEditing ? 'Editar paciente' : 'Nuevo paciente'}</Text>
-        <TouchableOpacity activeOpacity={0.82} onPress={onCancel} style={styles.smallButton}>
-          <Text style={styles.smallButtonText}>Cancelar</Text>
-        </TouchableOpacity>
-      </View>
-      <Field label="Nombre y apellido" value={form.nombreApellido} onChangeText={(nombreApellido) => onChange({ ...form, nombreApellido })} />
-      <Field label="Domicilio" value={form.domicilio} onChangeText={(domicilio) => onChange({ ...form, domicilio })} />
-      <Field
-        label="Motivo de consulta"
-        value={form.motivoConsulta}
-        onChangeText={(motivoConsulta) => onChange({ ...form, motivoConsulta })}
-        multiline
-      />
-      <Field
-        label="Afección / patología"
-        value={form.afeccionPatologia}
-        onChangeText={(afeccionPatologia) => onChange({ ...form, afeccionPatologia })}
-        multiline
-      />
-      <Field
-        label="Tratamiento propuesto"
-        value={form.tratamientoPropuesto}
-        onChangeText={(tratamientoPropuesto) => onChange({ ...form, tratamientoPropuesto })}
-        multiline
-      />
-      <Field
-        label="Fecha nacimiento DD/MM/AAAA"
-        value={form.fechaNacimiento}
-        onChangeText={(fechaNacimiento) => onChange({ ...form, fechaNacimiento, usaEdadEstimada: false })}
-      />
-      {automaticAge !== null ? <Text style={styles.helperText}>Edad calculada automáticamente: {automaticAge} años</Text> : null}
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={() => onChange({ ...form, usaEdadEstimada: !form.usaEdadEstimada, fechaNacimiento: '' })}
-        style={[styles.toggleRow, form.usaEdadEstimada ? styles.activeToggle : null]}
-      >
-        <Text style={[styles.toggleText, form.usaEdadEstimada ? styles.activeToggleText : null]}>Usar edad estimada</Text>
-      </TouchableOpacity>
-      {form.usaEdadEstimada ? (
-        <Field label="Edad estimada" value={form.edadEstimada} onChangeText={(edadEstimada) => onChange({ ...form, edadEstimada })} />
-      ) : null}
-      <PrimaryButton label={saving ? 'Guardando' : 'Guardar paciente'} onPress={onSave} />
-    </View>
-  );
-}
-
-function HistoryPanel({
-  entries,
-  form,
-  onChange,
-  onEdit,
-  onSave,
-  saving,
-}: {
-  entries: ClinicalHistoryEntry[];
-  form: { id: string; fecha: string; contenido: string };
-  onChange: (form: { id: string; fecha: string; contenido: string }) => void;
-  onEdit: (entry: ClinicalHistoryEntry) => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  return (
-    <View style={styles.subPanel}>
-      <Text style={styles.subTitle}>Historia clínica</Text>
-      <Field label="Fecha tratamiento" value={form.fecha} onChangeText={(fecha) => onChange({ ...form, fecha })} />
-      <Field label="Contenido libre" value={form.contenido} onChangeText={(contenido) => onChange({ ...form, contenido })} multiline tall />
-      <PrimaryButton label={saving ? 'Guardando' : form.id ? 'Actualizar entrada' : 'Guardar entrada'} onPress={onSave} />
-      {entries.map((entry) => (
-        <TouchableOpacity key={entry.id} activeOpacity={0.84} onPress={() => onEdit(entry)} style={styles.recordCard}>
-          <Text style={styles.recordDate}>{entry.fechaTratamiento}</Text>
-          <Text style={styles.recordText} numberOfLines={4}>{entry.contenido}</Text>
-          <Text style={styles.signatureText}>{entry.authorSignatureSnapshot}</Text>
-          <Text style={styles.backupText}>Backup: {entry.backupStatus}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
-  );
-}
-
-function AppointmentPanel({
-  appointments,
-  form,
-  onChange,
-  onSave,
-  saving,
-}: {
-  appointments: Appointment[];
-  form: { date: string; time: string; notes: string; status: AppointmentStatus };
-  onChange: (form: { date: string; time: string; notes: string; status: AppointmentStatus }) => void;
-  onSave: () => void;
-  saving: boolean;
-}) {
-  return (
-    <View style={styles.subPanel}>
-      <Text style={styles.subTitle}>Agenda</Text>
-      <View style={styles.twoColumns}>
-        <View style={styles.column}>
-          <Field label="Fecha" value={form.date} onChangeText={(date) => onChange({ ...form, date })} />
+    <View style={styles.sectionBlock}>
+      <View style={[styles.listHeader, compact ? styles.listHeaderCompact : null]}>
+        <View style={styles.listTitleBlock}>
+          <Text style={styles.sectionTitle}>{title}</Text>
+          <Text style={styles.sectionMeta}>{subtitle}</Text>
         </View>
-        <View style={styles.column}>
-          <Field label="Hora" value={form.time} onChangeText={(time) => onChange({ ...form, time })} />
-        </View>
+        {onCreate ? <SmallAction label="Nuevo" onPress={onCreate} /> : null}
       </View>
-      <Field label="Notas" value={form.notes} onChangeText={(notes) => onChange({ ...form, notes })} multiline />
-      <View style={styles.statusWrap}>
-        {appointmentStatuses.map((status) => (
-          <TouchableOpacity
-            key={status}
-            activeOpacity={0.82}
-            onPress={() => onChange({ ...form, status })}
-            style={[styles.statusPill, form.status === status ? styles.activeStatus : null]}
-          >
-            <Text style={[styles.statusText, form.status === status ? styles.activeStatusText : null]}>{status}</Text>
+      <Field label="Buscar paciente" value={query} onChangeText={onQuery} />
+      <View style={styles.patientList}>
+        {patients.length === 0 ? (
+          <EmptyState text="No hay pacientes para mostrar." />
+        ) : null}
+        {patients.map((patient) => (
+          <TouchableOpacity key={patient.id} activeOpacity={0.86} onPress={() => onOpenPatient(patient)} style={styles.patientCard}>
+            <View style={styles.patientInitial}>
+              <Text style={styles.patientInitialText}>{patient.nombreApellido.slice(0, 1).toUpperCase()}</Text>
+            </View>
+            <View style={styles.patientCardBody}>
+              <Text style={styles.patientName} numberOfLines={1}>{patient.nombreApellido}</Text>
+              <Text style={styles.patientDescription} numberOfLines={2}>{patient.motivoConsulta || 'Sin motivo de consulta'}</Text>
+              <Text style={styles.patientStatus} numberOfLines={1}>Activo · {patient.fechaNacimiento || `${patient.edadEstimada ?? '-'} años`}</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         ))}
       </View>
-      <PrimaryButton label={saving ? 'Guardando' : 'Agendar visita'} onPress={onSave} />
-      {appointments.map((appointment) => (
-        <View key={appointment.id} style={styles.recordCard}>
-          <Text style={styles.recordDate}>{appointment.appointmentDate} - {appointment.appointmentTime}</Text>
-          <Text style={styles.recordText}>{appointment.patientName ?? 'Paciente'} | {appointment.status}</Text>
-          <Text style={styles.recordText}>{appointment.notes || 'Sin notas'}</Text>
-        </View>
-      ))}
     </View>
   );
 }
 
-function VisitPanel({
+function PatientDetail({
+  appointments,
+  histories,
+  onAppointment,
+  onBack,
+  onEdit,
+  onHistory,
+  onVisit,
+  patient,
+}: {
+  appointments: Appointment[];
+  histories: ClinicalHistoryEntry[];
+  onAppointment: () => void;
+  onBack: () => boolean;
+  onEdit: () => void;
+  onHistory: () => void;
+  onVisit: () => void;
+  patient: KinesiologiaPatient;
+}) {
+  const age = patient.fechaNacimiento ? calculateAge(patient.fechaNacimiento) : patient.edadEstimada;
+  return (
+    <ScreenShell
+      title={patient.nombreApellido}
+      subtitle="Ficha completa del paciente"
+      onBack={onBack}
+      rightAction={<SmallAction label="Editar" onPress={onEdit} />}
+    >
+      <View style={styles.actionGrid}>
+        <SecondaryAction label="Historia clínica" onPress={onHistory} />
+        <SecondaryAction label="Agendar visita" onPress={onAppointment} />
+        <SecondaryAction label="Cargar visita" onPress={onVisit} />
+      </View>
+      <View style={styles.infoCard}>
+        <InfoRow label="Nombre y apellido" value={patient.nombreApellido} />
+        <InfoRow label="Domicilio" value={patient.domicilio} />
+        <InfoRow label="Fecha de nacimiento" value={patient.fechaNacimiento || '-'} />
+        <InfoRow label="Edad" value={age ? `${age} años${patient.usaEdadEstimada ? ' estimados' : ''}` : '-'} />
+        <InfoRow label="Motivo de consulta" value={patient.motivoConsulta} />
+        <InfoRow label="Afección / enfermedad / patología" value={patient.afeccionPatologia} />
+        <InfoRow label="Tratamiento propuesto" value={patient.tratamientoPropuesto} />
+        <InfoRow label="Estado" value="Activo" />
+        <InfoRow label="Fecha de creación" value={formatDateTimeAR(patient.createdAt)} />
+        <InfoRow label="Última actualización" value={formatDateTimeAR(patient.updatedAt)} />
+      </View>
+      <SummaryList
+        emptyText="Sin visitas próximas."
+        items={appointments.map((appointment) => `${formatDateAR(appointment.appointmentDate)} ${appointment.appointmentTime} · ${appointment.status}`)}
+        title="Próximas visitas"
+      />
+      <SummaryList
+        emptyText="Sin historias clínicas cargadas."
+        items={histories.map((entry) => `${formatDateAR(entry.fechaTratamiento)} · ${entry.contenido}`)}
+        title="Últimas historias clínicas"
+      />
+    </ScreenShell>
+  );
+}
+
+function PatientFormScreen({
+  form,
+  isEditing,
+  onBack,
+  onChange,
+  onSave,
+  saving,
+}: {
+  form: PatientInput;
+  isEditing: boolean;
+  onBack: () => boolean;
+  onChange: (form: PatientInput) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const automaticAge = calculateAge(form.fechaNacimiento);
+  return (
+    <ScreenShell title={isEditing ? 'Editar paciente' : 'Nuevo paciente'} subtitle="Datos clínicos principales" onBack={onBack}>
+      <View style={styles.formCard}>
+        <Field label="Nombre y apellido" value={form.nombreApellido} onChangeText={(nombreApellido) => onChange({ ...form, nombreApellido })} />
+        <Field label="Domicilio" value={form.domicilio} onChangeText={(domicilio) => onChange({ ...form, domicilio })} />
+        <Field label="Motivo de consulta" value={form.motivoConsulta} onChangeText={(motivoConsulta) => onChange({ ...form, motivoConsulta })} multiline />
+        <Field
+          label="Afección / patología"
+          value={form.afeccionPatologia}
+          onChangeText={(afeccionPatologia) => onChange({ ...form, afeccionPatologia })}
+          multiline
+        />
+        <Field
+          label="Tratamiento propuesto"
+          value={form.tratamientoPropuesto}
+          onChangeText={(tratamientoPropuesto) => onChange({ ...form, tratamientoPropuesto })}
+          multiline
+        />
+        <Field
+          label="Fecha nacimiento DD/MM/AAAA"
+          value={form.fechaNacimiento}
+          onChangeText={(fechaNacimiento) => onChange({ ...form, fechaNacimiento, usaEdadEstimada: false })}
+        />
+        {automaticAge !== null ? <Text style={styles.helperText}>Edad calculada automáticamente: {automaticAge} años</Text> : null}
+        <TogglePill
+          active={form.usaEdadEstimada}
+          label="Usar edad estimada"
+          onPress={() => onChange({ ...form, usaEdadEstimada: !form.usaEdadEstimada, fechaNacimiento: '' })}
+        />
+        {form.usaEdadEstimada ? (
+          <Field label="Edad estimada" value={form.edadEstimada} onChangeText={(edadEstimada) => onChange({ ...form, edadEstimada })} />
+        ) : null}
+        <PrimaryButton label={saving ? 'Guardando' : isEditing ? 'Actualizar paciente' : 'Guardar paciente'} onPress={onSave} />
+      </View>
+    </ScreenShell>
+  );
+}
+
+function ClinicalHistoryScreen({
+  entries,
+  expandedId,
+  onBack,
+  onEdit,
+  onNew,
+  onToggle,
+  patient,
+}: {
+  entries: ClinicalHistoryEntry[];
+  expandedId: string | null;
+  onBack: () => boolean;
+  onEdit: (entry: ClinicalHistoryEntry) => void;
+  onNew: () => void;
+  onToggle: (id: string | null) => void;
+  patient: KinesiologiaPatient;
+}) {
+  return (
+    <ScreenShell title="Historia clínica" subtitle={patient.nombreApellido} onBack={onBack} rightAction={<SmallAction label="Nueva" onPress={onNew} />}>
+      <View style={styles.recordStack}>
+        {entries.length === 0 ? <EmptyState text="Todavía no hay entradas clínicas para este paciente." /> : null}
+        {entries.map((entry) => {
+          const expanded = expandedId === entry.id;
+          return (
+            <View key={entry.id} style={styles.recordCard}>
+              <TouchableOpacity activeOpacity={0.84} onPress={() => onToggle(expanded ? null : entry.id)} style={styles.recordHeader}>
+                <View style={styles.recordTitleBlock}>
+                  <Text style={styles.recordDate}>{formatDateAR(entry.fechaTratamiento)}</Text>
+                  <Text style={styles.recordText} numberOfLines={expanded ? undefined : 2}>{entry.contenido}</Text>
+                </View>
+                <Text style={styles.chevron}>{expanded ? '⌃' : '⌄'}</Text>
+              </TouchableOpacity>
+              {expanded ? (
+                <View style={styles.recordExpanded}>
+                  <Text style={styles.signatureText}>{entry.authorSignatureSnapshot}</Text>
+                  <Text style={styles.backupText}>Backup: {entry.backupStatus}</Text>
+                  <SecondaryAction label="Editar historia clínica" onPress={() => onEdit(entry)} />
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </View>
+    </ScreenShell>
+  );
+}
+
+function ClinicalHistoryFormScreen({
+  form,
+  onBack,
+  onChange,
+  onSave,
+  patient,
+  saving,
+}: {
+  form: HistoryForm;
+  onBack: () => boolean;
+  onChange: (form: HistoryForm) => void;
+  onSave: () => void;
+  patient: KinesiologiaPatient;
+  saving: boolean;
+}) {
+  return (
+    <ScreenShell title={form.id ? 'Editar historia clínica' : 'Nueva historia clínica'} subtitle={patient.nombreApellido} onBack={onBack}>
+      <CalendarPicker value={form.fechaTratamiento} onChange={(fechaTratamiento) => onChange({ ...form, fechaTratamiento })} />
+      <Field
+        label="Observaciones"
+        value={form.contenido}
+        onChangeText={(contenido) => onChange({ ...form, contenido })}
+        multiline
+        tall
+      />
+      <PrimaryButton label={saving ? 'Guardando' : form.id ? 'Actualizar historia clínica' : 'Guardar historia clínica'} onPress={onSave} />
+    </ScreenShell>
+  );
+}
+
+function AppointmentScreen({
+  appointments,
+  form,
+  onBack,
+  onChange,
+  onSave,
+  patient,
+  saving,
+}: {
+  appointments: Appointment[];
+  form: AppointmentForm;
+  onBack: () => boolean;
+  onChange: (form: AppointmentForm) => void;
+  onSave: () => void;
+  patient: KinesiologiaPatient;
+  saving: boolean;
+}) {
+  return (
+    <ScreenShell title="Agendar visita" subtitle={patient.nombreApellido} onBack={onBack}>
+      <CalendarPicker value={form.date} onChange={(date) => onChange({ ...form, date })} />
+      <Text style={styles.subTitle}>Horario</Text>
+      <OptionGrid options={hours} value={form.hour} onChange={(hour) => onChange({ ...form, hour })} />
+      <OptionGrid options={minutes} value={form.minute} onChange={(minute) => onChange({ ...form, minute })} />
+      <Field label="Notas opcionales" value={form.notes} onChangeText={(notes) => onChange({ ...form, notes })} multiline />
+      <PrimaryButton label={saving ? 'Guardando' : 'Agendar visita'} onPress={onSave} />
+      <SummaryList
+        emptyText="Sin visitas agendadas para este paciente."
+        items={appointments.map((appointment) => `${formatDateAR(appointment.appointmentDate)} ${appointment.appointmentTime} · ${appointment.status}`)}
+        title="Agenda del paciente"
+      />
+    </ScreenShell>
+  );
+}
+
+function VisitScreen({
   financialMovements,
   form,
+  onBack,
   onChange,
   onFinish,
   onStart,
+  patient,
   saving,
   visits,
 }: {
   financialMovements: FinancialMovement[];
-  form: {
-    active: boolean;
-    visitDate: string;
-    start: string;
-    end: string;
-    observaciones: string;
-    pagoRealizado: boolean;
-    montoPagado: string;
-    paymentMethod: PaymentMethod;
-  };
-  onChange: (form: {
-    active: boolean;
-    visitDate: string;
-    start: string;
-    end: string;
-    observaciones: string;
-    pagoRealizado: boolean;
-    montoPagado: string;
-    paymentMethod: PaymentMethod;
-  }) => void;
+  form: VisitForm;
+  onBack: () => boolean;
+  onChange: (form: VisitForm) => void;
   onFinish: () => void;
   onStart: () => void;
+  patient: KinesiologiaPatient;
   saving: boolean;
   visits: Visit[];
 }) {
   return (
-    <View style={styles.subPanel}>
-      <Text style={styles.subTitle}>Cargar visita</Text>
+    <ScreenShell title="Cargar visita" subtitle={patient.nombreApellido} onBack={onBack}>
       {!form.active ? (
-        <PrimaryButton label="Iniciar visita" onPress={onStart} />
+        <View style={styles.infoCard}>
+          <Text style={styles.recordText}>La fecha y hora de inicio se toman automáticamente del dispositivo.</Text>
+          <PrimaryButton label="Iniciar sesión" onPress={onStart} />
+        </View>
       ) : (
-        <>
-          <Text style={styles.helperText}>Inicio automático: {formatDateAR(form.visitDate)} {form.start}</Text>
+        <View style={styles.infoCard}>
+          <InfoRow label="Fecha" value={formatDateAR(form.visitDate)} />
+          <InfoRow label="Hora de inicio" value={form.start} />
           <Field label="Observaciones" value={form.observaciones} onChangeText={(observaciones) => onChange({ ...form, observaciones })} multiline />
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={() => onChange({ ...form, pagoRealizado: !form.pagoRealizado })}
-            style={[styles.toggleRow, form.pagoRealizado ? styles.activeToggle : null]}
-          >
-            <Text style={[styles.toggleText, form.pagoRealizado ? styles.activeToggleText : null]}>Pago realizado</Text>
-          </TouchableOpacity>
+          <TogglePill active={form.pagoRealizado} label="Pago realizado" onPress={() => onChange({ ...form, pagoRealizado: !form.pagoRealizado })} />
           {form.pagoRealizado ? (
             <>
               <Field label="Monto pagado" value={form.montoPagado} onChangeText={(montoPagado) => onChange({ ...form, montoPagado })} />
-              <View style={styles.statusWrap}>
-                {(['efectivo', 'transferencia', 'mercado_pago', 'tarjeta', 'otro'] as PaymentMethod[]).map((method) => (
-                  <TouchableOpacity
-                    key={method}
-                    activeOpacity={0.82}
-                    onPress={() => onChange({ ...form, paymentMethod: method })}
-                    style={[styles.statusPill, form.paymentMethod === method ? styles.activeStatus : null]}
-                  >
-                    <Text style={[styles.statusText, form.paymentMethod === method ? styles.activeStatusText : null]}>
-                      {method.replace('_', ' ')}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              <Text style={styles.subTitle}>Método de pago</Text>
+              <OptionGrid
+                options={paymentMethods}
+                value={form.paymentMethod}
+                onChange={(paymentMethod) => onChange({ ...form, paymentMethod: paymentMethod as PaymentMethod })}
+              />
             </>
           ) : null}
-          <PrimaryButton label={saving ? 'Guardando' : 'Finalizar visita'} onPress={onFinish} />
-        </>
-      )}
-      {visits.map((visit) => (
-        <View key={visit.id} style={styles.recordCard}>
-          <Text style={styles.recordDate}>{formatDateAR(visit.visitDate)} | {visit.horaInicio} - {visit.horaFin}</Text>
-          <Text style={styles.recordText}>Duración: {visit.duracionMinutos} minutos</Text>
-          <Text style={styles.recordText}>{visit.observaciones || 'Sin observaciones'}</Text>
-          {visit.pagoRealizado ? <Text style={styles.backupText}>Pago: {formatCurrencyARS(visit.montoPagado)}</Text> : null}
+          <PrimaryButton label={saving ? 'Guardando' : 'Finalizar sesión'} onPress={onFinish} />
         </View>
-      ))}
-      <View style={styles.subPanel}>
-        <Text style={styles.subTitle}>Pagos vinculados</Text>
-        {financialMovements.length === 0 ? (
-          <Text style={styles.recordText}>Sin movimientos financieros vinculados.</Text>
-        ) : null}
-        {financialMovements.map((movement) => (
-          <View key={movement.id} style={styles.recordCard}>
-            <Text style={styles.recordDate}>{formatDateAR(movement.movementDate)} | {movement.paymentMethod}</Text>
-            <Text style={styles.recordText}>{movement.description}</Text>
-            <Text style={styles.backupText}>{formatCurrencyARS(movement.amount)} | {movement.paymentStatus}</Text>
-          </View>
+      )}
+      <SummaryList
+        emptyText="Sin visitas finalizadas."
+        items={visits.map((visit) => `${formatDateAR(visit.visitDate)} · ${visit.duracionMinutos} min · ${visit.observaciones || 'Sin observaciones'}`)}
+        title="Visitas registradas"
+      />
+      <SummaryList
+        emptyText="Sin pagos vinculados."
+        items={financialMovements.map((movement) => `${formatDateAR(movement.movementDate)} · ${formatCurrencyARS(movement.amount)} · ${movement.description}`)}
+        title="Pagos vinculados"
+      />
+    </ScreenShell>
+  );
+}
+
+function ProfileEditor({
+  form,
+  onChange,
+  onSave,
+  saving,
+}: {
+  form: {
+    nombreCompleto: string;
+    titulo: string;
+    matriculaProfesional: string;
+    especialidad: string;
+    horariosAtencion: string;
+  };
+  onChange: (form: {
+    nombreCompleto: string;
+    titulo: string;
+    matriculaProfesional: string;
+    especialidad: string;
+    horariosAtencion: string;
+  }) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  return (
+    <ScreenShell title="Perfil profesional" subtitle="Firma clínica persistida en Supabase">
+      <View style={styles.formCard}>
+        <Field label="Título" value={form.titulo} onChangeText={(titulo) => onChange({ ...form, titulo })} />
+        <Field label="Nombre completo" value={form.nombreCompleto} onChangeText={(nombreCompleto) => onChange({ ...form, nombreCompleto })} />
+        <Field
+          label="Matrícula profesional M.P."
+          value={form.matriculaProfesional}
+          onChangeText={(matriculaProfesional) => onChange({ ...form, matriculaProfesional })}
+        />
+        <Field label="Especialidad" value={form.especialidad} onChangeText={(especialidad) => onChange({ ...form, especialidad })} />
+        <Field label="Horarios" value={form.horariosAtencion} onChangeText={(horariosAtencion) => onChange({ ...form, horariosAtencion })} multiline />
+        <View style={styles.signatureCard}>
+          <Text style={styles.signatureLabel}>Firma generada</Text>
+          <Text style={styles.signatureText}>{formatProfessionalSignature(form)}</Text>
+        </View>
+        <PrimaryButton label={saving ? 'Guardando' : 'Guardar perfil'} onPress={onSave} />
+      </View>
+    </ScreenShell>
+  );
+}
+
+function CalendarPicker({ onChange, value }: { onChange: (value: string) => void; value: string }) {
+  const selected = isoToDate(value);
+  const [month, setMonth] = useState(new Date(selected.getFullYear(), selected.getMonth(), 1));
+  const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  const mondayOffset = (monthStart.getDay() + 6) % 7;
+  const cells = [
+    ...Array.from({ length: mondayOffset }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => new Date(month.getFullYear(), month.getMonth(), index + 1)),
+  ];
+
+  return (
+    <View style={styles.calendarCard}>
+      <View style={styles.calendarHeader}>
+        <TouchableOpacity activeOpacity={0.82} onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))} style={styles.calendarNav}>
+          <Text style={styles.calendarNavText}>‹</Text>
+        </TouchableOpacity>
+        <Text style={styles.calendarTitle}>{month.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}</Text>
+        <TouchableOpacity activeOpacity={0.82} onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))} style={styles.calendarNav}>
+          <Text style={styles.calendarNavText}>›</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.weekRow}>
+        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((day) => (
+          <Text key={day} style={styles.weekLabel}>{day}</Text>
         ))}
       </View>
+      <View style={styles.daysGrid}>
+        {cells.map((date, index) => {
+          const iso = date ? toIsoDate(date) : `empty-${index}`;
+          const active = date ? iso === value : false;
+          return (
+            <TouchableOpacity
+              key={iso}
+              activeOpacity={date ? 0.82 : 1}
+              disabled={!date}
+              onPress={() => date && onChange(iso)}
+              style={[styles.dayCell, active ? styles.activeDayCell : null]}
+            >
+              <Text style={[styles.dayText, active ? styles.activeDayText : null]}>{date ? date.getDate() : ''}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+      <Text style={styles.helperText}>Fecha seleccionada: {formatDateAR(value)}</Text>
+    </View>
+  );
+}
+
+function OptionGrid({ onChange, options, value }: { onChange: (value: string) => void; options: string[]; value: string }) {
+  return (
+    <View style={styles.optionGrid}>
+      {options.map((option) => {
+        const active = value === option;
+        return (
+          <TouchableOpacity key={option} activeOpacity={0.82} onPress={() => onChange(option)} style={[styles.optionPill, active ? styles.activeOptionPill : null]}>
+            <Text style={[styles.optionText, active ? styles.activeOptionText : null]}>{option.replace('_', ' ')}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+}
+
+function SummaryList({ emptyText, items, title }: { emptyText: string; items: string[]; title: string }) {
+  return (
+    <View style={styles.summaryCard}>
+      <Text style={styles.subTitle}>{title}</Text>
+      {items.length === 0 ? <Text style={styles.recordText}>{emptyText}</Text> : null}
+      {items.map((item, index) => (
+        <Text key={`${item}-${index}`} style={styles.summaryItem} numberOfLines={3}>{item}</Text>
+      ))}
+    </View>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value || '-'}</Text>
     </View>
   );
 }
@@ -771,8 +1069,18 @@ function Field({
         placeholder={label}
         placeholderTextColor={healthColors.olive}
         style={[styles.input, multiline ? styles.multiline : null, tall ? styles.tallInput : null]}
+        textAlignVertical={multiline ? 'top' : 'center'}
         value={value}
       />
+    </View>
+  );
+}
+
+function EmptyState({ text }: { text: string }) {
+  return (
+    <View style={styles.emptyCard}>
+      <Text style={styles.emptyTitle}>Sin datos</Text>
+      <Text style={styles.emptyText}>{text}</Text>
     </View>
   );
 }
@@ -785,10 +1093,26 @@ function PrimaryButton({ label, onPress }: { label: string; onPress: () => void 
   );
 }
 
-function SecondaryButton({ label, onPress }: { label: string; onPress: () => void }) {
+function SmallAction({ label, onPress }: { label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={styles.smallAction}>
+      <Text style={styles.smallActionText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function SecondaryAction({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={styles.secondaryButton}>
       <Text style={styles.secondaryButtonText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+function TogglePill({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={[styles.toggleRow, active ? styles.activeToggle : null]}>
+      <Text style={[styles.toggleText, active ? styles.activeToggleText : null]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -797,23 +1121,82 @@ const styles = StyleSheet.create({
   wrapper: {
     gap: 14,
   },
-  sectionHeader: {
+  sectionBlock: {
+    gap: 12,
+  },
+  listHeader: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
+  },
+  listHeaderCompact: {
+    alignItems: 'stretch',
+    flexDirection: 'column',
+  },
+  listTitleBlock: {
+    flex: 1,
+    minWidth: 0,
   },
   sectionTitle: {
     color: healthColors.night,
-    flex: 1,
-    fontSize: 22,
+    fontSize: 23,
     fontWeight: '900',
-    lineHeight: 27,
+    lineHeight: 29,
   },
   sectionMeta: {
     color: healthColors.olive,
     fontSize: 12,
     fontWeight: '900',
+    marginTop: 3,
     textTransform: 'uppercase',
+  },
+  screenShell: {
+    backgroundColor: healthColors.cream,
+    borderColor: healthColors.creamDeep,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 14,
+    padding: 14,
+  },
+  shellHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  backButton: {
+    alignItems: 'center',
+    backgroundColor: healthColors.night,
+    borderRadius: 10,
+    height: 42,
+    justifyContent: 'center',
+    width: 42,
+  },
+  backIcon: {
+    color: healthColors.cream,
+    fontSize: 28,
+    fontWeight: '900',
+    lineHeight: 30,
+  },
+  shellTitleBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  shellTitle: {
+    color: healthColors.night,
+    fontSize: 21,
+    fontWeight: '900',
+    lineHeight: 26,
+  },
+  shellSubtitle: {
+    color: healthColors.olive,
+    fontSize: 12,
+    fontWeight: '900',
+    lineHeight: 17,
+    marginTop: 2,
+  },
+  shellAction: {
+    flexShrink: 0,
   },
   errorBox: {
     backgroundColor: healthColors.creamSoft,
@@ -855,68 +1238,102 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   multiline: {
-    minHeight: 84,
+    minHeight: 88,
     paddingTop: 12,
-    textAlignVertical: 'top',
   },
   tallInput: {
-    minHeight: 150,
+    minHeight: 210,
   },
-  patientRail: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
+  patientList: {
+    gap: 10,
   },
-  patientChip: {
+  patientCard: {
+    alignItems: 'center',
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    maxWidth: '100%',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 12,
   },
-  activePatientChip: {
+  patientInitial: {
+    alignItems: 'center',
     backgroundColor: healthColors.night,
-    borderColor: healthColors.night,
+    borderRadius: 12,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
   },
-  patientChipText: {
-    color: healthColors.night,
-    fontSize: 12,
+  patientInitialText: {
+    color: healthColors.cream,
+    fontSize: 18,
     fontWeight: '900',
   },
-  activePatientChipText: {
-    color: healthColors.cream,
+  patientCardBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  patientName: {
+    color: healthColors.night,
+    fontSize: 15,
+    fontWeight: '900',
+    lineHeight: 20,
+  },
+  patientDescription: {
+    color: healthColors.night,
+    fontSize: 12,
+    fontWeight: '700',
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  patientStatus: {
+    color: healthColors.olive,
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 5,
+  },
+  chevron: {
+    color: healthColors.night,
+    fontSize: 24,
+    fontWeight: '900',
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
   formCard: {
-    backgroundColor: healthColors.cream,
+    backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
     borderRadius: 14,
     borderWidth: 1,
     padding: 14,
   },
-  formHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  formTitle: {
-    color: healthColors.night,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  smallButton: {
-    borderColor: healthColors.night,
-    borderRadius: 10,
+  infoCard: {
+    backgroundColor: healthColors.creamSoft,
+    borderColor: healthColors.creamDeep,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    padding: 14,
   },
-  smallButtonText: {
-    color: healthColors.night,
+  infoRow: {
+    borderBottomColor: healthColors.creamDeep,
+    borderBottomWidth: 1,
+    paddingVertical: 9,
+  },
+  infoLabel: {
+    color: healthColors.olive,
     fontSize: 11,
     fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  infoValue: {
+    color: healthColors.night,
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 19,
+    marginTop: 3,
   },
   helperText: {
     color: healthColors.olive,
@@ -926,15 +1343,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   toggleRow: {
-    borderColor: healthColors.creamDeep,
+    borderColor: healthColors.night,
     borderRadius: 12,
     borderWidth: 1,
-    marginTop: 10,
+    marginTop: 12,
     padding: 12,
   },
   activeToggle: {
     backgroundColor: healthColors.night,
-    borderColor: healthColors.night,
   },
   toggleText: {
     color: healthColors.night,
@@ -958,96 +1374,72 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '900',
   },
+  smallAction: {
+    alignItems: 'center',
+    backgroundColor: healthColors.night,
+    borderRadius: 12,
+    justifyContent: 'center',
+    minHeight: 40,
+    paddingHorizontal: 14,
+  },
+  smallActionText: {
+    color: healthColors.cream,
+    fontSize: 12,
+    fontWeight: '900',
+  },
   secondaryButton: {
     alignItems: 'center',
     borderColor: healthColors.night,
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',
-    marginTop: 12,
     minHeight: 44,
-    paddingHorizontal: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 10,
   },
   secondaryButtonText: {
     color: healthColors.night,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '900',
   },
-  patientPanel: {
+  summaryCard: {
     backgroundColor: healthColors.creamSoft,
     borderColor: healthColors.creamDeep,
     borderRadius: 14,
     borderWidth: 1,
+    gap: 8,
     padding: 14,
-  },
-  panelTitle: {
-    color: healthColors.night,
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  panelMeta: {
-    color: healthColors.olive,
-    fontSize: 12,
-    fontWeight: '900',
-    marginTop: 4,
-  },
-  panelText: {
-    color: healthColors.night,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 20,
-    marginTop: 8,
-  },
-  subPanel: {
-    borderTopColor: healthColors.creamDeep,
-    borderTopWidth: 1,
-    marginTop: 16,
-    paddingTop: 14,
   },
   subTitle: {
     color: healthColors.night,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
+    marginTop: 8,
   },
-  twoColumns: {
+  summaryItem: {
+    color: healthColors.night,
+    fontSize: 12,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  recordStack: {
+    gap: 10,
+  },
+  recordCard: {
+    backgroundColor: healthColors.creamSoft,
+    borderColor: healthColors.creamDeep,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+  },
+  recordHeader: {
+    alignItems: 'center',
     flexDirection: 'row',
     gap: 10,
   },
-  column: {
+  recordTitleBlock: {
     flex: 1,
     minWidth: 0,
-  },
-  statusWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 10,
-  },
-  statusPill: {
-    borderColor: healthColors.night,
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-  },
-  activeStatus: {
-    backgroundColor: healthColors.night,
-  },
-  statusText: {
-    color: healthColors.night,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  activeStatusText: {
-    color: healthColors.cream,
-  },
-  recordCard: {
-    backgroundColor: healthColors.cream,
-    borderColor: healthColors.creamDeep,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginTop: 10,
-    padding: 12,
   },
   recordDate: {
     color: healthColors.burgundy,
@@ -1061,8 +1453,15 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 5,
   },
+  recordExpanded: {
+    borderTopColor: healthColors.creamDeep,
+    borderTopWidth: 1,
+    gap: 10,
+    marginTop: 12,
+    paddingTop: 12,
+  },
   signatureCard: {
-    backgroundColor: healthColors.creamSoft,
+    backgroundColor: healthColors.cream,
     borderColor: healthColors.creamDeep,
     borderRadius: 14,
     borderWidth: 1,
@@ -1080,13 +1479,106 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     lineHeight: 18,
-    marginTop: 8,
   },
   backupText: {
     color: healthColors.olive,
     fontSize: 11,
     fontWeight: '900',
+  },
+  calendarCard: {
+    backgroundColor: healthColors.creamSoft,
+    borderColor: healthColors.creamDeep,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+  },
+  calendarHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  calendarNav: {
+    alignItems: 'center',
+    borderColor: healthColors.night,
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  calendarNavText: {
+    color: healthColors.night,
+    fontSize: 22,
+    fontWeight: '900',
+  },
+  calendarTitle: {
+    color: healthColors.night,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '900',
+    textAlign: 'center',
+    textTransform: 'capitalize',
+  },
+  weekRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  weekLabel: {
+    color: healthColors.olive,
+    flex: 1,
+    fontSize: 10,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  daysGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     marginTop: 8,
+  },
+  dayCell: {
+    alignItems: 'center',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    width: `${100 / 7}%`,
+  },
+  activeDayCell: {
+    backgroundColor: healthColors.night,
+    borderRadius: 10,
+  },
+  dayText: {
+    color: healthColors.night,
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  activeDayText: {
+    color: healthColors.cream,
+  },
+  optionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  optionPill: {
+    borderColor: healthColors.night,
+    borderRadius: 10,
+    borderWidth: 1,
+    minWidth: 44,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  activeOptionPill: {
+    backgroundColor: healthColors.night,
+  },
+  optionText: {
+    color: healthColors.night,
+    fontSize: 11,
+    fontWeight: '900',
+    textAlign: 'center',
+    textTransform: 'capitalize',
+  },
+  activeOptionText: {
+    color: healthColors.cream,
   },
   emptyCard: {
     borderColor: healthColors.creamDeep,

@@ -23,6 +23,8 @@ create table if not exists public.professional_profiles (
   nombre_completo text not null,
   titulo text not null default 'Lic.',
   matricula_profesional text not null default '',
+  especialidad text,
+  horarios_atencion text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -123,6 +125,9 @@ alter table public.financial_movements drop constraint if exists financial_movem
 alter table public.financial_movements
   add constraint financial_movements_source_type_check
   check (source_type in ('visit', 'electrical_job', 'print_order', 'quote', 'invoice', 'manual', 'expense', 'adjustment'));
+
+alter table public.professional_profiles add column if not exists especialidad text;
+alter table public.professional_profiles add column if not exists horarios_atencion text;
 
 create table if not exists public.invoices (
   id text primary key,

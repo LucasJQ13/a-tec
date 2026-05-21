@@ -37,6 +37,8 @@ type ProfileRow = {
   nombre_completo: string;
   titulo: string;
   matricula_profesional: string;
+  especialidad: string | null;
+  horarios_atencion: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -117,6 +119,8 @@ function profileFromRow(row: ProfileRow): ProfessionalProfile {
     nombreCompleto: row.nombre_completo,
     titulo: row.titulo,
     matriculaProfesional: row.matricula_profesional,
+    especialidad: row.especialidad ?? '',
+    horariosAtencion: row.horarios_atencion ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -254,6 +258,8 @@ export async function getProfessionalProfile() {
     nombre_completo: 'Fernanda Canavidez',
     titulo: 'Lic.',
     matricula_profesional: '',
+    especialidad: '',
+    horarios_atencion: '',
     created_at: timestamp,
     updated_at: timestamp,
   });
@@ -263,6 +269,8 @@ export async function saveProfessionalProfile(input: {
   nombreCompleto: string;
   titulo: string;
   matriculaProfesional: string;
+  especialidad?: string;
+  horariosAtencion?: string;
 }) {
   const client = requireSupabase();
   const timestamp = nowIso();
@@ -271,6 +279,8 @@ export async function saveProfessionalProfile(input: {
     nombre_completo: input.nombreCompleto.trim(),
     titulo: input.titulo.trim(),
     matricula_profesional: input.matriculaProfesional.trim(),
+    especialidad: input.especialidad?.trim() ?? '',
+    horarios_atencion: input.horariosAtencion?.trim() ?? '',
     updated_at: timestamp,
   });
   if (error) throw new Error(error.message);
