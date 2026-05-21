@@ -10,7 +10,7 @@ Visualmente se muestra como:
 
 ## Variables locales
 
-Crear un archivo `.env.local` en la raiz del proyecto:
+Crear un archivo `.env.local` en la raíz del proyecto:
 
 ```text
 EXPO_PUBLIC_SUPABASE_URL=https://rfshphvtduzjnfsfkyny.supabase.co

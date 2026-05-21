@@ -549,7 +549,7 @@ function PatientForm({
         multiline
       />
       <Field
-        label="Fecha nacimiento AAAA-MM-DD"
+        label="Fecha nacimiento DD/MM/AAAA"
         value={form.fechaNacimiento}
         onChangeText={(fechaNacimiento) => onChange({ ...form, fechaNacimiento, usaEdadEstimada: false })}
       />

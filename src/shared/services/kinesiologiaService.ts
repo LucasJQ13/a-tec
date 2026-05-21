@@ -9,7 +9,13 @@ import type {
   ProfessionalProfile,
   Visit,
 } from '../types/kinesiologia';
-import { calculateAgeFromBirthDate, formatProfessionalSignature } from '../utils/formatters';
+import {
+  calculateAgeFromBirthDate,
+  formatDateAR,
+  formatProfessionalSignature,
+  isValidDateAR,
+  parseDateARToISO,
+} from '../utils/formatters';
 import type { PaymentMethod } from '../types/finance';
 
 type PatientRow = {
@@ -97,7 +103,7 @@ function patientFromRow(row: PatientRow): KinesiologiaPatient {
     motivoConsulta: row.motivo_consulta,
     afeccionPatologia: row.afeccion_patologia,
     tratamientoPropuesto: row.tratamiento_propuesto,
-    fechaNacimiento: row.fecha_nacimiento ?? '',
+    fechaNacimiento: row.fecha_nacimiento ? formatDateAR(row.fecha_nacimiento) : '',
     edadEstimada: row.edad_estimada ?? undefined,
     usaEdadEstimada: row.usa_edad_estimada,
     createdAt: row.created_at,
@@ -179,6 +185,10 @@ export function validatePatientInput(input: PatientInput) {
     return 'Carga fecha de nacimiento o activa edad estimada.';
   }
 
+  if (input.fechaNacimiento.trim() && !isValidDateAR(input.fechaNacimiento.trim())) {
+    return 'Usa fecha de nacimiento con formato DD/MM/AAAA.';
+  }
+
   if (input.usaEdadEstimada && Number(input.edadEstimada) <= 0) {
     return 'Carga una edad estimada válida.';
   }
@@ -188,6 +198,7 @@ export function validatePatientInput(input: PatientInput) {
 
 function patientPayload(input: PatientInput) {
   const hasBirthDate = input.fechaNacimiento.trim().length > 0;
+  const fechaNacimientoIso = hasBirthDate ? parseDateARToISO(input.fechaNacimiento) : '';
 
   return {
     nombre_apellido: input.nombreApellido.trim(),
@@ -195,7 +206,7 @@ function patientPayload(input: PatientInput) {
     motivo_consulta: input.motivoConsulta.trim(),
     afeccion_patologia: input.afeccionPatologia.trim(),
     tratamiento_propuesto: input.tratamientoPropuesto.trim(),
-    fecha_nacimiento: hasBirthDate ? input.fechaNacimiento.trim() : null,
+    fecha_nacimiento: hasBirthDate ? fechaNacimientoIso : null,
     edad_estimada: hasBirthDate ? null : Number(input.edadEstimada),
     usa_edad_estimada: !hasBirthDate && input.usaEdadEstimada,
     updated_at: nowIso(),
