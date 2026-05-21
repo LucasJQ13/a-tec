@@ -11,7 +11,7 @@ type FloatingDockNavProps = {
 const DOCK_ITEMS: Array<{ id: MainTabId; label: string; icon: string }> = [
   { id: 'home', label: 'Inicio', icon: 'I' },
   { id: 'clients', label: 'Clientes', icon: 'C' },
-  { id: 'reports', label: 'Reportes', icon: 'R' },
+  { id: 'reports', label: 'Finanzas', icon: '$' },
   { id: 'settings', label: 'Ajustes', icon: 'A' },
 ];
 
