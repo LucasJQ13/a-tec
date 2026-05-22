@@ -14,6 +14,7 @@ import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
 import { SplashScreen } from './src/screens/SplashScreen';
 import { WelcomeUserScreen } from './src/screens/WelcomeUserScreen';
+import { AppErrorBoundary } from './src/shared/components/AppErrorBoundary';
 import { ToastProvider } from './src/shared/components/ToastProvider';
 import type { AreaId, MainTabId, RootStackParamList, UserProfile } from './src/types/navigation';
 
@@ -120,7 +121,7 @@ function MainNavigator({ onBackToUsers, selectedUser }: MainNavigatorProps) {
   );
 }
 
-export default function App() {
+function AtecApp() {
   const [flowStep, setFlowStep] = useState<AppFlowStep>('splash');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
 
@@ -151,6 +152,14 @@ export default function App() {
         {flowStep === 'main' ? <MainNavigator selectedUser={selectedUser} onBackToUsers={backToUserSelection} /> : null}
       </ToastProvider>
     </SafeAreaProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AppErrorBoundary>
+      <AtecApp />
+    </AppErrorBoundary>
   );
 }
 
