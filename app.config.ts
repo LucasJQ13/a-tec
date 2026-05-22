@@ -9,7 +9,7 @@ const config: ExpoConfig = {
   icon: './assets/icon.png',
   jsEngine: 'jsc',
   userInterfaceStyle: 'light',
-  newArchEnabled: true,
+  newArchEnabled: false,
   splash: {
     image: './assets/splash-icon.png',
     resizeMode: 'contain',

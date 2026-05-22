@@ -1,32 +1,16 @@
 import type { ProfessionalProfile } from '../types/kinesiologia';
 
-const dateFormatter = new Intl.DateTimeFormat('es-AR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
+function pad2(value: number) {
+  return String(value).padStart(2, '0');
+}
 
-const dateTimeFormatter = new Intl.DateTimeFormat('es-AR', {
-  day: '2-digit',
-  hour: '2-digit',
-  hour12: false,
-  minute: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('es-AR', {
-  hour: '2-digit',
-  hour12: false,
-  minute: '2-digit',
-});
-
-const currencyFormatter = new Intl.NumberFormat('es-AR', {
-  currency: 'ARS',
-  maximumFractionDigits: 2,
-  minimumFractionDigits: 2,
-  style: 'currency',
-});
+function formatARSManually(amount: number) {
+  const sign = amount < 0 ? '-' : '';
+  const absolute = Math.abs(amount);
+  const [integerPart, decimalPart] = absolute.toFixed(2).split('.');
+  const grouped = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return `${sign}$ ${grouped},${decimalPart}`;
+}
 
 function toDate(value?: Date | string | null) {
   if (!value) return null;
@@ -57,7 +41,7 @@ export function sanitizeFileName(value: string) {
 
 export function formatDateAR(value?: Date | string | null) {
   const date = toDate(value);
-  return date ? dateFormatter.format(date) : '-';
+  return date ? `${pad2(date.getDate())}/${pad2(date.getMonth() + 1)}/${date.getFullYear()}` : '-';
 }
 
 export function isValidDateAR(value?: string | null) {
@@ -86,23 +70,19 @@ export function parseDateARToISO(value?: string | null) {
 
 export function formatDateTimeAR(value?: Date | string | null) {
   const date = toDate(value);
-  return date ? dateTimeFormatter.format(date) : '-';
+  return date ? `${formatDateAR(date)} ${pad2(date.getHours())}:${pad2(date.getMinutes())}` : '-';
 }
 
 export function formatTimeAR(value?: Date | string | null) {
   if (!value) return '-';
   if (typeof value === 'string' && /^\d{2}:\d{2}/.test(value)) return value.slice(0, 5);
   const date = toDate(value);
-  return date ? timeFormatter.format(date) : '-';
+  return date ? `${pad2(date.getHours())}:${pad2(date.getMinutes())}` : '-';
 }
 
 export function formatCurrencyARS(amount?: number | string | null) {
   const value = Number(amount ?? 0);
-  return currencyFormatter
-    .format(Number.isFinite(value) ? value : 0)
-    .replace('ARS', '$')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return formatARSManually(Number.isFinite(value) ? value : 0);
 }
 
 export function parseDateForDatabase(value: Date | string) {
