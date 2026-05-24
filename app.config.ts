@@ -7,7 +7,7 @@ const config: ExpoConfig = {
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
-  jsEngine: 'jsc',
+  jsEngine: 'hermes',
   userInterfaceStyle: 'light',
   newArchEnabled: false,
   splash: {

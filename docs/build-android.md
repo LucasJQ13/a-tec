@@ -52,7 +52,7 @@ npm run android:prebuild:clean
 
 Para pruebas locales en celular, A-Tec queda preparada con:
 
-- JSC activado.
+- Hermes activado.
 - New Architecture desactivada.
 - Formateadores de fecha, hora y moneda sin dependencia obligatoria de `Intl`.
 - Package Android: `com.canavidezquiroga.atec`.
