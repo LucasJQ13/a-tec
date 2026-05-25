@@ -1,5 +1,6 @@
 import { BackHandler, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AcademicHeader } from '../components/AcademicHeader';
 import { HorizontalModuleRail } from '../components/HorizontalModuleRail';
 import { MetricsGlassStrip } from '../components/MetricsGlassStrip';
@@ -17,6 +18,7 @@ type HomeScreenProps = {
 
 export function HomeScreen({ onBackToUsers, onOpenArea, selectedUser }: HomeScreenProps) {
   const { onRefresh, refreshing } = usePullRefresh();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -30,7 +32,7 @@ export function HomeScreen({ onBackToUsers, onOpenArea, selectedUser }: HomeScre
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top, paddingBottom: 132 + insets.bottom }]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -53,7 +55,7 @@ export function HomeScreen({ onBackToUsers, onOpenArea, selectedUser }: HomeScre
       <HorizontalModuleRail modules={MODULES_CONFIG} onOpenArea={onOpenArea} />
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Accesos rapidos</Text>
+        <Text style={styles.sectionTitle}>Accesos rápidos</Text>
         <Text style={styles.sectionHint}>Acciones frecuentes sin entrar a cada modulo</Text>
       </View>
 

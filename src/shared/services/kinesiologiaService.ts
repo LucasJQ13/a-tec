@@ -4,6 +4,7 @@ import type {
   Appointment,
   AppointmentStatus,
   ClinicalHistoryEntry,
+  DailyAppointment,
   KinesiologiaPatient,
   PatientInput,
   ProfessionalProfile,
@@ -39,6 +40,7 @@ type ProfileRow = {
   matricula_profesional: string;
   especialidad: string | null;
   horarios_atencion: string | null;
+  profile_photo_url?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -63,7 +65,7 @@ type AppointmentRow = {
   status: AppointmentStatus;
   created_at: string;
   updated_at: string;
-  patients?: { nombre_apellido?: string } | null;
+  patients?: { nombre_apellido?: string; domicilio?: string } | null;
 };
 
 type VisitRow = {
@@ -121,6 +123,7 @@ function profileFromRow(row: ProfileRow): ProfessionalProfile {
     matriculaProfesional: row.matricula_profesional,
     especialidad: row.especialidad ?? '',
     horariosAtencion: row.horarios_atencion ?? '',
+    profilePhotoUrl: row.profile_photo_url ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -150,6 +153,14 @@ function appointmentFromRow(row: AppointmentRow): Appointment {
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function dailyAppointmentFromRow(row: AppointmentRow): DailyAppointment {
+  return {
+    ...appointmentFromRow(row),
+    domicilio: row.patients?.domicilio ?? '',
+    quickNotes: row.notes ?? '',
   };
 }
 
@@ -260,6 +271,7 @@ export async function getProfessionalProfile() {
     matricula_profesional: '',
     especialidad: '',
     horarios_atencion: '',
+    profile_photo_url: '',
     created_at: timestamp,
     updated_at: timestamp,
   });
@@ -271,6 +283,7 @@ export async function saveProfessionalProfile(input: {
   matriculaProfesional: string;
   especialidad?: string;
   horariosAtencion?: string;
+  profilePhotoUrl?: string;
 }) {
   const client = requireSupabase();
   const timestamp = nowIso();
@@ -281,6 +294,7 @@ export async function saveProfessionalProfile(input: {
     matricula_profesional: input.matriculaProfesional.trim(),
     especialidad: input.especialidad?.trim() ?? '',
     horarios_atencion: input.horariosAtencion?.trim() ?? '',
+    profile_photo_url: input.profilePhotoUrl?.trim() ?? '',
     updated_at: timestamp,
   });
   if (error) throw new Error(error.message);
@@ -350,6 +364,18 @@ export async function listAppointments(patientId?: string) {
   return (data ?? []).map((row) => appointmentFromRow(row as AppointmentRow));
 }
 
+export async function listDailyAppointments(date = new Date().toISOString().slice(0, 10)) {
+  const client = requireSupabase();
+  const { data, error } = await client
+    .from('appointments')
+    .select('*, patients(nombre_apellido, domicilio)')
+    .eq('appointment_date', date)
+    .eq('status', 'programada')
+    .order('appointment_time', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((row) => dailyAppointmentFromRow(row as AppointmentRow));
+}
+
 export async function saveAppointment(input: {
   patientId: string;
   appointmentDate: string;
@@ -370,6 +396,15 @@ export async function saveAppointment(input: {
     created_at: timestamp,
     updated_at: timestamp,
   });
+  if (error) throw new Error(error.message);
+}
+
+export async function completeAppointment(appointmentId: string) {
+  const client = requireSupabase();
+  const { error } = await client
+    .from('appointments')
+    .update({ status: 'realizada', updated_at: nowIso() })
+    .eq('id', appointmentId);
   if (error) throw new Error(error.message);
 }
 
@@ -394,6 +429,7 @@ export async function saveVisit(input: {
   pagoRealizado: boolean;
   montoPagado: number;
   paymentMethod?: PaymentMethod;
+  appointmentId?: string;
 }) {
   const client = requireSupabase();
   const timestamp = nowIso();
@@ -411,6 +447,10 @@ export async function saveVisit(input: {
     created_at: timestamp,
   });
   if (error) throw new Error(error.message);
+
+  if (input.appointmentId) {
+    await completeAppointment(input.appointmentId);
+  }
 
   if (input.pagoRealizado && input.montoPagado > 0) {
     await createFinancialMovement({

@@ -58,6 +58,7 @@ type AppointmentForm = {
 
 type VisitForm = {
   active: boolean;
+  appointmentId?: string;
   visitDate: string;
   start: string;
   observaciones: string;
@@ -310,7 +311,13 @@ export function KinesiologiaCareWorkspace({ mode, onFullScreenChange }: Props) {
   };
 
   const openVisitForm = () => {
-    setVisitForm(visitFormFromNow());
+    const nextAppointment = upcomingAppointments[0];
+    setVisitForm({
+      ...visitFormFromNow(),
+      appointmentId: nextAppointment?.id,
+      start: nextAppointment?.appointmentTime ?? currentTime(),
+      visitDate: nextAppointment?.appointmentDate ?? todayIso(),
+    });
     setFlow('visit');
   };
 
@@ -393,7 +400,7 @@ export function KinesiologiaCareWorkspace({ mode, onFullScreenChange }: Props) {
   };
 
   const startVisit = () => {
-    setVisitForm({ ...visitFormFromNow(), active: true });
+    setVisitForm((current) => ({ ...current, active: true, start: current.start || currentTime() }));
   };
 
   const finishVisit = async () => {
@@ -412,7 +419,9 @@ export function KinesiologiaCareWorkspace({ mode, onFullScreenChange }: Props) {
         pagoRealizado: visitForm.pagoRealizado,
         montoPagado: Number(visitForm.montoPagado || 0),
         paymentMethod: visitForm.paymentMethod,
+        appointmentId: visitForm.appointmentId,
       });
+      await loadBaseData();
       await loadPatientDetails(selectedPatient);
       showToast(visitForm.pagoRealizado ? 'Sesión finalizada y cobro realizado' : 'Sesión finalizada', 'success');
       setVisitForm(visitFormFromNow());
@@ -523,6 +532,7 @@ export function KinesiologiaCareWorkspace({ mode, onFullScreenChange }: Props) {
 
       {flow === 'visit' && selectedPatient ? (
         <VisitScreen
+          appointments={selectedAppointments.filter((appointment) => appointment.status === 'programada')}
           financialMovements={financialMovements}
           form={visitForm}
           patient={selectedPatient}
@@ -862,6 +872,7 @@ function AppointmentScreen({
 }
 
 function VisitScreen({
+  appointments,
   financialMovements,
   form,
   onBack,
@@ -872,6 +883,7 @@ function VisitScreen({
   saving,
   visits,
 }: {
+  appointments: Appointment[];
   financialMovements: FinancialMovement[];
   form: VisitForm;
   onBack: () => boolean;
@@ -886,7 +898,29 @@ function VisitScreen({
     <ScreenShell title="Cargar visita" subtitle={patient.nombreApellido} onBack={onBack}>
       {!form.active ? (
         <View style={styles.infoCard}>
-          <Text style={styles.recordText}>La fecha y hora de inicio se toman automáticamente del dispositivo.</Text>
+          <Text style={styles.recordText}>Elegí una visita programada o iniciá una sesión libre.</Text>
+          {appointments.length > 0 ? (
+            <View style={styles.optionGrid}>
+              {appointments.map((appointment) => (
+                <TouchableOpacity
+                  key={appointment.id}
+                  onPress={() =>
+                    onChange({
+                      ...form,
+                      appointmentId: appointment.id,
+                      start: appointment.appointmentTime,
+                      visitDate: appointment.appointmentDate,
+                    })
+                  }
+                  style={[styles.optionPill, form.appointmentId === appointment.id ? styles.activeOptionPill : null]}
+                >
+                  <Text style={[styles.optionText, form.appointmentId === appointment.id ? styles.activeOptionText : null]}>
+                    {formatDateAR(appointment.appointmentDate)} · {appointment.appointmentTime}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
           <PrimaryButton label="Iniciar sesión" onPress={onStart} />
         </View>
       ) : (

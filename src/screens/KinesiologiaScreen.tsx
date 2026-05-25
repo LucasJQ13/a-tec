@@ -44,7 +44,10 @@ export function KinesiologiaScreen({ onBack }: KinesiologiaScreenProps) {
     <View style={styles.screen}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.content, { paddingBottom: 104 + insets.bottom }]}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 104 + insets.bottom, paddingTop: workspaceFullScreen ? insets.top + 12 : 0 },
+        ]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}

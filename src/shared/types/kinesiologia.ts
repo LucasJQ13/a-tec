@@ -33,6 +33,7 @@ export type ProfessionalProfile = {
   matriculaProfesional: string;
   especialidad?: string;
   horariosAtencion?: string;
+  profilePhotoUrl?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -58,6 +59,11 @@ export type Appointment = {
   status: AppointmentStatus;
   createdAt: string;
   updatedAt: string;
+};
+
+export type DailyAppointment = Appointment & {
+  domicilio?: string;
+  quickNotes?: string;
 };
 
 export type Visit = {
