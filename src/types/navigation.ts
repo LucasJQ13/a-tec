@@ -1,4 +1,4 @@
-export type MainTabId = 'home' | 'clients' | 'reports' | 'settings';
+export type MainTabId = 'home' | 'agenda' | 'reports' | 'reminders' | 'settings';
 
 export type AppScreen = MainTabId | 'electricidad' | 'kinesiologia' | 'imprenta';
 
@@ -48,5 +48,7 @@ export type RootStackParamList = {
   Imprenta: undefined;
   Clients: undefined;
   Reports: undefined;
+  DailyAppointments: undefined;
+  Reminders: undefined;
   Settings: undefined;
 };

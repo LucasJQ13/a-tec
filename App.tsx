@@ -11,8 +11,11 @@ import { FinanceScreen } from './src/screens/FinanceScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { ImprentaScreen } from './src/screens/ImprentaScreen';
 import { KinesiologiaScreen } from './src/screens/KinesiologiaScreen';
+import { DailyAppointmentsScreen } from './src/screens/DailyAppointmentsScreen';
 import { PlaceholderScreen } from './src/screens/PlaceholderScreen';
+import { RemindersScreen } from './src/screens/RemindersScreen';
 import { SplashScreen } from './src/screens/SplashScreen';
+import { UserSettingsScreen } from './src/screens/UserSettingsScreen';
 import { WelcomeUserScreen } from './src/screens/WelcomeUserScreen';
 import { AppErrorBoundary } from './src/shared/components/AppErrorBoundary';
 import { ToastProvider } from './src/shared/components/ToastProvider';
@@ -24,8 +27,9 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 function tabForRoute(routeName: keyof RootStackParamList): MainTabId {
-  if (routeName === 'Clients') return 'clients';
+  if (routeName === 'DailyAppointments') return 'agenda';
   if (routeName === 'Reports') return 'reports';
+  if (routeName === 'Reminders') return 'reminders';
   if (routeName === 'Settings') return 'settings';
   return 'home';
 }
@@ -37,8 +41,9 @@ function routeForArea(area: AreaId): keyof RootStackParamList {
 }
 
 function routeForTab(tab: MainTabId): keyof RootStackParamList {
-  if (tab === 'clients') return 'Clients';
+  if (tab === 'agenda') return 'DailyAppointments';
   if (tab === 'reports') return 'Reports';
+  if (tab === 'reminders') return 'Reminders';
   if (tab === 'settings') return 'Settings';
   return 'Home';
 }
@@ -94,17 +99,18 @@ function MainNavigator({ onBackToUsers, selectedUser }: MainNavigatorProps) {
           <Stack.Screen name="Reports">
             {() => <FinanceScreen />}
           </Stack.Screen>
+          <Stack.Screen name="DailyAppointments">
+            {() => <DailyAppointmentsScreen />}
+          </Stack.Screen>
+          <Stack.Screen name="Reminders">
+            {() => <RemindersScreen selectedUser={selectedUser} />}
+          </Stack.Screen>
           <Stack.Screen name="Settings">
-            {() => (
-              <PlaceholderScreen
-                title="Ajustes"
-                subtitle="Datos de A-Tec, preferencias visuales y configuracion general."
-              />
-            )}
+            {() => <UserSettingsScreen selectedUser={selectedUser} onBackToUsers={onBackToUsers} />}
           </Stack.Screen>
         </Stack.Navigator>
 
-        {['Home', 'Clients', 'Reports', 'Settings'].includes(activeRoute) ? (
+        {['Home', 'DailyAppointments', 'Reports', 'Reminders', 'Settings'].includes(activeRoute) ? (
           <FloatingDockNav
             activeTab={activeTab}
             onChangeTab={(tab) => {

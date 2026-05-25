@@ -10,8 +10,9 @@ type FloatingDockNavProps = {
 
 const DOCK_ITEMS: Array<{ id: MainTabId; label: string; icon: string }> = [
   { id: 'home', label: 'Inicio', icon: 'I' },
-  { id: 'clients', label: 'Clientes', icon: 'C' },
+  { id: 'agenda', label: 'Agenda', icon: 'G' },
   { id: 'reports', label: 'Finanzas', icon: '$' },
+  { id: 'reminders', label: 'Record.', icon: 'R' },
   { id: 'settings', label: 'Ajustes', icon: 'A' },
 ];
 
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
   },
   label: {
     color: homeColors.dark,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     marginTop: 3,
   },

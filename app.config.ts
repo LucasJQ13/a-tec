@@ -29,7 +29,15 @@ const config: ExpoConfig = {
   web: {
     favicon: './assets/favicon.png',
   },
-  plugins: ['expo-sqlite'],
+  plugins: [
+    'expo-sqlite',
+    [
+      'expo-notifications',
+      {
+        defaultChannel: 'agenda-diaria',
+      },
+    ],
+  ],
   extra: {
     EXPO_PUBLIC_CONTACTS_CREATED_BY: process.env.EXPO_PUBLIC_CONTACTS_CREATED_BY,
     EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
